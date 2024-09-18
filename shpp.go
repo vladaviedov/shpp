@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
-	"io"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/jessevdk/go-flags"
 )
@@ -28,6 +31,10 @@ func main() {
 		usage(os.Stdout)
 		os.Exit(0)
 	}
+	if opts.Version {
+		version()
+		os.Exit(0)
+	}
 
 	var outStream *os.File = nil
 	if opts.Output == "" {
@@ -46,19 +53,26 @@ func main() {
 		os.Exit(2)
 	}
 
-	var inStream *os.File = nil	
+	var inStream *os.File
+	var inWorkingDir string
 	if opts.Stdin {
 		inStream = os.Stdin
+		inWorkingDir, err = os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to fetch current directory: %s\n", err.Error())
+			os.Exit(1)
+		}
 	} else {
 		inStream, err = os.Open(args[0])
+		inWorkingDir = path.Dir(args[0])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to open source file: %s\n", err.Error())
+			os.Exit(1)
 		}
 	}
 	defer inStream.Close()
 
-	data, _ := io.ReadAll(inStream)
-	outStream.Write(data)
+	outStream.Write(compile(inStream, inWorkingDir))
 }
 
 func usage(toFile *os.File) {
@@ -68,4 +82,89 @@ func usage(toFile *os.File) {
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-h, --help", "Show usage information")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-v, --version", "Show program version")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-o, --output <file>", "Set output file")
+}
+
+func version() {
+	fmt.Printf("shpp version pre-0.1")
+}
+
+func compile(file *os.File, fileDir string) []byte {
+	builder := new(strings.Builder)
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		trimmed := strings.Trim(scanner.Text(), " \t")
+		if len(trimmed) == 0 {
+			continue
+		}
+
+		if trimmed[0] == '@' {
+			result, err := evalDirective(trimmed, fileDir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to compile: %s\n", err.Error())
+				break
+			}
+
+			fmt.Fprintf(builder, "<!-- START %s -->\n", trimmed)
+			builder.Write(result)
+			fmt.Fprintf(builder, "<!-- END %s -->", trimmed)
+		} else if trimmed[0] == '\\' && trimmed[1] == '@' {
+			builder.Write([]byte(trimmed[1:]))
+		} else {
+			builder.Write([]byte(trimmed))
+		}
+
+		fmt.Fprintln(builder)
+	}
+
+	return []byte(builder.String())
+}
+
+func evalDirective(directive string, fileDir string) ([]byte, error) {
+	parts := strings.Split(directive, " ")
+	switch parts[0] {
+	case "@include":
+		return evalInclude(parts, fileDir)
+	case "@style":
+		return evalStyle(parts, fileDir)
+	default:
+		return nil, errors.New("invalid directive")
+	}
+}
+
+func evalInclude(argv []string, fileDir string) ([]byte, error) {
+	if len(argv) != 2 {
+		return nil, errors.New("@include: syntax error: requires a single parameter")
+	}
+
+	includePath := path.Join(fileDir, argv[1])
+	includeDir := path.Dir(includePath)
+	includeFile, err := os.Open(includePath)
+	if err != nil {
+		msg := fmt.Sprintf("@include: failed to open '%s'", err.Error())
+		return nil, errors.New(msg)
+	}
+	defer includeFile.Close()
+
+	return compile(includeFile, includeDir), nil
+}
+
+func evalStyle(argv []string, fileDir string) ([]byte, error) {
+	if len(argv) != 2 {
+		return nil, errors.New("@style: syntax error: requires a single parameter")
+	}
+
+	stylePath := path.Join(fileDir, argv[1])
+	data, err := os.ReadFile(stylePath)
+	if err != nil {
+		msg := fmt.Sprintf("@include: failed to read '%s'", err.Error())
+		return nil, errors.New(msg)
+	}
+
+	builder := new(strings.Builder)
+	fmt.Fprintln(builder, "<style>")
+	builder.Write(data)
+	fmt.Fprintln(builder, "</style>")
+
+	return []byte(builder.String()), nil
 }
