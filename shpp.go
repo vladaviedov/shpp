@@ -130,6 +130,8 @@ func evalDirective(directive string, fileDir string) ([]byte, error) {
 		return evalInclude(parts, fileDir)
 	case "@style":
 		return evalStyle(parts, fileDir)
+	case "@script":
+		return evalScript(parts, fileDir)
 	default:
 		return nil, errors.New("invalid directive")
 	}
@@ -168,6 +170,26 @@ func evalStyle(argv []string, fileDir string) ([]byte, error) {
 	fmt.Fprintln(builder, "<style>")
 	builder.Write(data)
 	fmt.Fprintln(builder, "</style>")
+
+	return []byte(builder.String()), nil
+}
+
+func evalScript(argv []string, fileDir string) ([]byte, error) {
+	if len(argv) != 2 {
+		return nil, errors.New("@script: syntax error: requires a single parameter")
+	}
+
+	stylePath := path.Join(fileDir, argv[1])
+	data, err := os.ReadFile(stylePath)
+	if err != nil {
+		msg := fmt.Sprintf("@script: failed to read '%s'", err.Error())
+		return nil, errors.New(msg)
+	}
+
+	builder := new(strings.Builder)
+	fmt.Fprintln(builder, "<script>")
+	builder.Write(data)
+	fmt.Fprintln(builder, "</script>")
 
 	return []byte(builder.String()), nil
 }
