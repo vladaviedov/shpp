@@ -133,7 +133,8 @@ func evalDirective(directive string, fileDir string) ([]byte, error) {
 	case "@script":
 		return evalScript(parts, fileDir)
 	default:
-		return nil, errors.New("invalid directive")
+		msg := fmt.Sprintf("invalid directive: %s", parts[0])
+		return nil, errors.New(msg)
 	}
 }
 
@@ -162,7 +163,7 @@ func evalStyle(argv []string, fileDir string) ([]byte, error) {
 	stylePath := path.Join(fileDir, argv[1])
 	data, err := os.ReadFile(stylePath)
 	if err != nil {
-		msg := fmt.Sprintf("@include: failed to read '%s'", err.Error())
+		msg := fmt.Sprintf("@style: failed to read '%s'", err.Error())
 		return nil, errors.New(msg)
 	}
 
