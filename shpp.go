@@ -19,6 +19,9 @@ var opts struct {
 	Output string `long:"output" short:"o"`
 }
 
+// Populated by build system
+var Version string = "pre-0.1"
+
 func main() {
 	parser := flags.NewParser(&opts, flags.Default ^ flags.HelpFlag ^ flags.PrintErrors)
 	args, err := parser.Parse()
@@ -85,7 +88,7 @@ func usage(toFile *os.File) {
 }
 
 func version() {
-	fmt.Printf("shpp version pre-0.1")
+	fmt.Printf("shpp version %s\n", Version)
 }
 
 func compile(file *os.File, fileDir string) []byte {
