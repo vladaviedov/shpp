@@ -108,9 +108,17 @@ func compile(file *os.File, fileDir string) []byte {
 				break
 			}
 
-			fmt.Fprintf(builder, "<!-- START %s -->\n", trimmed)
+			// Place start marker
+			if opts.Marker {
+				fmt.Fprintf(builder, "<!-- START %s -->\n", trimmed)
+			}
+
 			builder.Write(result)
-			fmt.Fprintf(builder, "<!-- END %s -->", trimmed)
+
+			// Place stop marker
+			if opts.Marker {
+				fmt.Fprintf(builder, "<!-- END %s -->", trimmed)
+			}
 		} else if trimmed[0] == '\\' && trimmed[1] == '@' {
 			builder.Write([]byte(trimmed[1:]))
 		} else {
