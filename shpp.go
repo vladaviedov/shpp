@@ -85,6 +85,7 @@ func usage(toFile *os.File) {
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-x, --stdin", "Read input file from stdin (source should be left empty)")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-h, --help", "Show usage information")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-v, --version", "Show program version")
+	fmt.Fprintf(toFile, "%-20s - %s\n", "-m, --marker", "Insert inclusion markers")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-o, --output <file>", "Set output file")
 }
 
