@@ -12,9 +12,10 @@ import (
 )
 
 var opts struct {
-	Help bool `long:"help" short:"h"`
+	Help    bool `long:"help" short:"h"`
 	Version bool `long:"version" short:"v"`
-	Stdin bool `long:"stdin" short:"x"`
+	Stdin   bool `long:"stdin" short:"x"`
+	Marker  bool `long:"marker" short:"m"`
 
 	Output string `long:"output" short:"o"`
 }
@@ -23,7 +24,7 @@ var opts struct {
 var Version string = "pre-0.1"
 
 func main() {
-	parser := flags.NewParser(&opts, flags.Default ^ flags.HelpFlag ^ flags.PrintErrors)
+	parser := flags.NewParser(&opts, flags.Default^flags.HelpFlag^flags.PrintErrors)
 	args, err := parser.Parse()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse arguments: %s\n", err.Error())
