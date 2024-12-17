@@ -1,7 +1,6 @@
 PWD=$(shell pwd)
 BUILD=$(PWD)/build
-# VERSION=$(shell git describe --tags --dirty)
-VERSION=pre0.1-g$(shell git rev-parse --short HEAD)$(shell git diff-index --quiet HEAD || echo -dirty)
+VERSION=$(shell git describe --tags --dirty)
 
 GO=go
 LDFLAGS=-X main.Version=$(VERSION)
