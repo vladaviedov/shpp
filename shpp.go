@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/jessevdk/go-flags"
@@ -167,7 +169,7 @@ func readPreamble(file *os.File, state *State) error {
 				return errors.New("syntax error: @include not allowed in preamble\n")
 			case dStyle: fallthrough
 			case dScript:
-				asset := createAsset(dr)
+				asset := createAsset(dr, state.FileDir)
 				state.Assets = append(state.Assets, asset)
 			case dNop:
 		}
@@ -226,21 +228,25 @@ func parseDirective(input string) (*Directive, error) {
 	}, nil
 }
 
-func createAsset(dr *Directive) Asset {
+func createAsset(dr *Directive, basePath string) Asset {
+	var asset Asset
+
 	switch dr.Kind {
 		case dStyle:
-			return Asset{
-				Kind: aStylesheet,
-				SourcePath: dr.Args[0],
-			}
+			asset.Kind = aStylesheet
 		case dScript:
-			return Asset{
-				Kind: aScript,
-				SourcePath: dr.Args[0],
-			}
+			asset.Kind = aScript
 		default:
-			panic("Invalid asset creation")
+			panic("Unable to create an asset from directive")
 	}
+
+	path, err := filepath.Abs(filepath.Join(basePath, dr.Args[0]))
+	if err != nil {
+		panic(err)
+	}
+
+	asset.SourcePath = path
+	return asset
 }
 
 func compile(file *os.File, fileDir string) []byte {
