@@ -20,6 +20,50 @@ var opts struct {
 	Output string `long:"output" short:"o"`
 }
 
+type AssetKind uint64
+const (
+	aStylesheet AssetKind = iota
+	aScript
+	aBinary
+)
+
+type DirectiveKind uint64
+const (
+	dNop DirectiveKind = iota
+	dHtml
+	dStyle
+	dScript
+	dInclude
+)
+
+type Asset struct {
+	Kind AssetKind
+	SourcePath string
+}
+
+type Directive struct {
+	Kind DirectiveKind
+	Args []string
+}
+
+type State struct {
+	Assets []Asset
+	PageURL string
+	FileDir string
+}
+
+type DirectiveDescription struct {
+	Kind DirectiveKind
+	RequiredArgs uint64
+	OptionalArgs uint64
+}
+
+var directiveDict = map[string]DirectiveDescription{
+	"@style": { Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0 },
+	"@script": { Kind: dScript, RequiredArgs: 1, OptionalArgs: 0 },
+	"@include": { Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0 },
+}
+
 // Populated by build system
 var Version string = "0.1.0"
 
