@@ -141,24 +141,16 @@ func version() {
 
 func readPreamble(file *os.File, state *State) error {
 	reader := bufio.NewReader(file)
-	line, err := reader.ReadString('\n')
-	if err != nil {
-		return err
-	}
+	consumed := int64(0)
 
-	dr, err := parseDirective(line)
-	if err != nil {
-		return err
-	}
-
-	kind := dr.Kind
+	kind := dNop
 	for kind != dHtml  {
-		line, err = reader.ReadString('\n')
+		line, err := reader.ReadString('\n')
 		if err != nil {
 			return err
 		}
 
-		dr, err = parseDirective(line)		
+		dr, err := parseDirective(line)		
 		if err != nil {
 			return err
 		}
@@ -171,12 +163,14 @@ func readPreamble(file *os.File, state *State) error {
 			case dScript:
 				asset := createAsset(dr, state.FileDir)
 				state.Assets = append(state.Assets, asset)
+				fallthrough
 			case dNop:
+				consumed += int64(len(line))
 		}
 	}
 
 	// Rewind file to "place" back the html data
-	file.Seek(-int64(len(line)), io.SeekCurrent)
+	file.Seek(consumed, io.SeekStart)
 	return nil
 }
 
