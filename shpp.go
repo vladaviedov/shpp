@@ -137,6 +137,112 @@ func version() {
 	fmt.Printf("shpp version %s\n", Version)
 }
 
+func readPreamble(file *os.File, state *State) error {
+	reader := bufio.NewReader(file)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+
+	dr, err := parseDirective(line)
+	if err != nil {
+		return err
+	}
+
+	kind := dr.Kind
+	for kind != dHtml  {
+		line, err = reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+
+		dr, err = parseDirective(line)		
+		if err != nil {
+			return err
+		}
+
+		kind = dr.Kind
+		switch kind {
+			case dInclude:
+				return errors.New("syntax error: @include not allowed in preamble\n")
+			case dStyle: fallthrough
+			case dScript:
+				asset := createAsset(dr)
+				state.Assets = append(state.Assets, asset)
+			case dNop:
+		}
+	}
+
+	// Rewind file to "place" back the html data
+	file.Seek(-int64(len(line)), io.SeekCurrent)
+	return nil
+}
+
+func parseDirective(input string) (*Directive, error) {
+	trimmed := strings.Trim(input, " \t\n")
+
+	// Empty lines and comment lines
+	if len(trimmed) == 0 || strings.HasPrefix(trimmed, "//") {
+		return &Directive {
+			Kind: dNop,
+			Args: nil,
+		}, nil
+	}
+
+	// All directive must start with a @
+	if trimmed[0] != '@' {
+		return &Directive{
+			Kind: dHtml,
+			Args: nil,
+		}, nil
+	}
+
+	parts := strings.Split(trimmed, " ")
+	info, valid := directiveDict[parts[0]]
+
+	// TODO: would be nice to give line information
+	if !valid {
+		msg := fmt.Sprintf("syntax error: invalid directive '%s'\n", parts[0])
+		return nil, errors.New(msg)
+	}
+
+	minArgs := info.RequiredArgs
+	maxArgs := minArgs + info.OptionalArgs
+	args := uint64(len(parts)) - 1
+	if args < minArgs || args > maxArgs {
+		var msg string
+		if minArgs != maxArgs {
+			msg = fmt.Sprintf("syntax error: '%s' requires %d-%d arguments\n", parts[0], minArgs, maxArgs)
+		} else {
+			msg = fmt.Sprintf("syntax error: '%s' requires %d arguments\n", parts[0], minArgs)
+		}
+
+		return nil, errors.New(msg)
+	}
+
+	return &Directive{
+		Kind: info.Kind,
+		Args: parts[1:],
+	}, nil
+}
+
+func createAsset(dr *Directive) Asset {
+	switch dr.Kind {
+		case dStyle:
+			return Asset{
+				Kind: aStylesheet,
+				SourcePath: dr.Args[0],
+			}
+		case dScript:
+			return Asset{
+				Kind: aScript,
+				SourcePath: dr.Args[0],
+			}
+		default:
+			panic("Invalid asset creation")
+	}
+}
+
 func compile(file *os.File, fileDir string) []byte {
 	builder := new(strings.Builder)
 
