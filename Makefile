@@ -17,3 +17,7 @@ $(BUILD)/bin:
 .PHONY: clean
 clean:
 	rm -rf $(BUILD)
+
+.PHONY: format
+format:
+	gofmt -w shpp.go
