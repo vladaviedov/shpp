@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/jessevdk/go-flags"
+	"golang.org/x/net/html"
 )
 
 var opts struct {
@@ -129,6 +130,17 @@ func main() {
 	}
 	defer inStream.Close()
 
+	wrappedDocument, err := compile(inStream, inWorkingDir, nil)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err.Error())
+		return
+	}
+
+	// Unwrap from the phony and write to output
+	html.Render(outStream, wrappedDocument.FirstChild)
+
+	// Add end-of-file newline
+	outStream.WriteString("\n")
 }
 
 func usage(toFile *os.File) {
@@ -143,6 +155,51 @@ func usage(toFile *os.File) {
 
 func version() {
 	fmt.Printf("shpp version %s\n", Version)
+}
+
+func compile(file *os.File, fileDir string, htmlContext *html.Node) (*html.Node, error) {
+	defaultName, _ := strings.CutSuffix(file.Name(), ".in")
+	state := State{
+		PageURL: defaultName,
+		FileDir: fileDir,
+	}
+
+	// Preamble
+	err := readPreamble(file, &state)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := bufio.NewReader(file)
+	tagList, err := html.ParseFragment(reader, htmlContext)
+	if err != nil {
+		msg := fmt.Sprintf("failed to parse HTML document: %s\n", err.Error())
+		return nil, errors.New(msg)
+	}
+
+	// Wrap the parsed tag into a phony tag
+	// This simplifies travesal and ensures that a parent always exists
+	phony := &html.Node{}
+
+	// The node will mimic the context node if it's not null
+	if htmlContext != nil {
+		phony.Type = htmlContext.Type
+		phony.Data = htmlContext.Data
+		phony.DataAtom = htmlContext.DataAtom
+	}
+
+	for _, tag := range tagList {
+		phony.AppendChild(tag)
+	}
+
+	for node := range phony.Descendants() {
+		err = processNode(node, fileDir)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return phony, nil
 }
 
 func readPreamble(file *os.File, state *State) error {
@@ -248,6 +305,93 @@ func createAsset(dr *Directive, basePath string) Asset {
 
 	asset.SourcePath = path
 	return asset
+}
+
+func processNode(node *html.Node, fileDir string) error {
+	// Only text nodes should be handled here
+	if node.Type != html.TextNode {
+		return nil
+	}
+
+	lines := strings.Split(node.Data, "\n")
+	unusedText := new(strings.Builder)
+
+	for _, line := range lines {
+		dr, err := parseDirective(line)
+		if err != nil {
+			return err
+		}
+
+		switch dr.Kind {
+		case dInclude:
+			absPath := convertPath(dr.Args[0], fileDir)
+			file, err := os.Open(absPath)
+			if err != nil {
+				return errors.New("failed to open source file: %s\n")
+			}
+			defer file.Close()
+
+			wrappedTags, err := compile(file, path.Dir(absPath), node.Parent)
+			if err != nil {
+				return err
+			}
+
+			// Any text before the include become a text node
+			if unusedText.Len() != 0 {
+				textNode := &html.Node{
+					Type: html.ElementNode,
+					Data: unusedText.String(),
+				}
+
+				node.Parent.InsertBefore(textNode, node)
+				unusedText.Reset()
+			}
+
+			// Add inclusion marker
+			if opts.Marker {
+				marker := &html.Node{
+					Type: html.CommentNode,
+					Data: fmt.Sprintf("START %s", dr.Args[0]),
+				}
+				node.Parent.InsertBefore(marker, node)
+			}
+
+			// Now add included nodes
+			tag := wrappedTags.FirstChild
+			for tag != nil {
+				// Appease the HTML parser
+				wrappedTags.RemoveChild(tag)
+
+				// Push all the new tags before the original one
+				node.Parent.InsertBefore(tag, node)
+
+				// Update tag reference
+				tag = wrappedTags.FirstChild
+			}
+
+			// Add inclusion marker
+			if opts.Marker {
+				marker := &html.Node{
+					Type: html.CommentNode,
+					Data: fmt.Sprintf("END %s", dr.Args[0]),
+				}
+				node.Parent.InsertBefore(marker, node)
+			}
+		case dStyle:
+			return errors.New("syntax error: @style must be placed in the preamble\n")
+		case dScript:
+			return errors.New("syntax error: @script must be placed in the preamble\n")
+		case dNop:
+			fallthrough
+		case dHtml:
+			// Store used but uncommited text (for splitting the node)
+			unusedText.WriteString(strings.Trim(line, " \t\n"))
+		}
+	}
+
+	// Remaining text stays in this node
+	node.Data = unusedText.String()
+	return nil
 }
 
 func convertPath(path string, fileDir string) string {
