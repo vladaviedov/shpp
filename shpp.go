@@ -130,7 +130,7 @@ func main() {
 	}
 	defer inStream.Close()
 
-	wrappedDocument, err := compile(inStream, inWorkingDir, nil)
+	wrappedDocument, _, err := compile(inStream, inWorkingDir, nil)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		return
@@ -157,24 +157,24 @@ func version() {
 	fmt.Printf("shpp version %s\n", Version)
 }
 
-func compile(file *os.File, fileDir string, htmlContext *html.Node) (*html.Node, error) {
+func compile(file *os.File, fileDir string, htmlContext *html.Node) (*html.Node, *State, error) {
 	defaultName, _ := strings.CutSuffix(file.Name(), ".in")
-	state := State{
+	state := &State{
 		PageURL: defaultName,
 		FileDir: fileDir,
 	}
 
 	// Preamble
-	err := readPreamble(file, &state)
+	err := readPreamble(file, state)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	reader := bufio.NewReader(file)
 	tagList, err := html.ParseFragment(reader, htmlContext)
 	if err != nil {
 		msg := fmt.Sprintf("failed to parse HTML document: %s\n", err.Error())
-		return nil, errors.New(msg)
+		return nil, nil, errors.New(msg)
 	}
 
 	// Wrap the parsed tag into a phony tag
@@ -193,13 +193,13 @@ func compile(file *os.File, fileDir string, htmlContext *html.Node) (*html.Node,
 	}
 
 	for node := range phony.Descendants() {
-		err = processNode(node, fileDir)
+		err = processNode(node, state)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return phony, nil
+	return phony, state, nil
 }
 
 func readPreamble(file *os.File, state *State) error {
@@ -307,7 +307,7 @@ func createAsset(dr *Directive, basePath string) Asset {
 	return asset
 }
 
-func processNode(node *html.Node, fileDir string) error {
+func processNode(node *html.Node, state *State) error {
 	// Only text nodes should be handled here
 	if node.Type != html.TextNode {
 		return nil
@@ -324,14 +324,15 @@ func processNode(node *html.Node, fileDir string) error {
 
 		switch dr.Kind {
 		case dInclude:
-			absPath := convertPath(dr.Args[0], fileDir)
+			absPath := convertPath(dr.Args[0], state.FileDir)
 			file, err := os.Open(absPath)
 			if err != nil {
 				return errors.New("failed to open source file: %s\n")
 			}
 			defer file.Close()
 
-			wrappedTags, err := compile(file, path.Dir(absPath), node.Parent)
+			// TODO: need to merge state assets
+			wrappedTags, _, err := compile(file, path.Dir(absPath), node.Parent)
 			if err != nil {
 				return err
 			}
