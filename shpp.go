@@ -175,9 +175,9 @@ func version() {
 }
 
 func compile(file *os.File, fileDir string, htmlContext *html.Node) (*html.Node, *State, error) {
-	defaultName, _ := strings.CutSuffix(file.Name(), ".in")
+	defaultName, _ := strings.CutSuffix(file.Name(), ".shpp")
 	state := &State{
-		PageURL: defaultName,
+		PageURL: defaultName + ".html",
 		FileDir: fileDir,
 	}
 
