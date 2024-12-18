@@ -41,6 +41,7 @@ const (
 	dHtml
 	dStyle
 	dScript
+	dUrl
 	dInclude
 )
 
@@ -69,6 +70,7 @@ type DirectiveDescription struct {
 var directiveDict = map[string]DirectiveDescription{
 	"@style":   {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
 	"@script":  {Kind: dScript, RequiredArgs: 1, OptionalArgs: 0},
+	"@url":     {Kind: dUrl, RequiredArgs: 1, OptionalArgs: 0},
 	"@include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
 }
 
@@ -222,6 +224,7 @@ func compile(file *os.File, fileDir string, htmlContext *html.Node) (*html.Node,
 func readPreamble(file *os.File, state *State) error {
 	reader := bufio.NewReader(file)
 	consumed := int64(0)
+	urlChanged := false
 
 	kind := dNop
 	for kind != dHtml {
@@ -244,8 +247,16 @@ func readPreamble(file *os.File, state *State) error {
 		case dScript:
 			asset := createAsset(dr, state.FileDir)
 			state.Assets = append(state.Assets, asset)
-			fallthrough
-		case dNop:
+		case dUrl:
+			if urlChanged {
+				fmt.Fprintf(os.Stderr, "warning: multiple @url directives found\n")
+			}
+
+			state.PageURL = dr.Args[0]
+			urlChanged = true
+		}
+
+		if dr.Kind != dHtml {
 			consumed += int64(len(line))
 		}
 	}
