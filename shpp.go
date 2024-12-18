@@ -23,6 +23,7 @@ var opts struct {
 }
 
 type AssetKind uint64
+
 const (
 	aStylesheet AssetKind = iota
 	aScript
@@ -30,6 +31,7 @@ const (
 )
 
 type DirectiveKind uint64
+
 const (
 	dNop DirectiveKind = iota
 	dHtml
@@ -39,7 +41,7 @@ const (
 )
 
 type Asset struct {
-	Kind AssetKind
+	Kind       AssetKind
 	SourcePath string
 }
 
@@ -49,21 +51,21 @@ type Directive struct {
 }
 
 type State struct {
-	Assets []Asset
+	Assets  []Asset
 	PageURL string
 	FileDir string
 }
 
 type DirectiveDescription struct {
-	Kind DirectiveKind
+	Kind         DirectiveKind
 	RequiredArgs uint64
 	OptionalArgs uint64
 }
 
 var directiveDict = map[string]DirectiveDescription{
-	"@style": { Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0 },
-	"@script": { Kind: dScript, RequiredArgs: 1, OptionalArgs: 0 },
-	"@include": { Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0 },
+	"@style":   {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
+	"@script":  {Kind: dScript, RequiredArgs: 1, OptionalArgs: 0},
+	"@include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
 }
 
 // Populated by build system
@@ -144,28 +146,29 @@ func readPreamble(file *os.File, state *State) error {
 	consumed := int64(0)
 
 	kind := dNop
-	for kind != dHtml  {
+	for kind != dHtml {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			return err
 		}
 
-		dr, err := parseDirective(line)		
+		dr, err := parseDirective(line)
 		if err != nil {
 			return err
 		}
 
 		kind = dr.Kind
 		switch kind {
-			case dInclude:
-				return errors.New("syntax error: @include not allowed in preamble\n")
-			case dStyle: fallthrough
-			case dScript:
-				asset := createAsset(dr, state.FileDir)
-				state.Assets = append(state.Assets, asset)
-				fallthrough
-			case dNop:
-				consumed += int64(len(line))
+		case dInclude:
+			return errors.New("syntax error: @include not allowed in preamble\n")
+		case dStyle:
+			fallthrough
+		case dScript:
+			asset := createAsset(dr, state.FileDir)
+			state.Assets = append(state.Assets, asset)
+			fallthrough
+		case dNop:
+			consumed += int64(len(line))
 		}
 	}
 
@@ -179,7 +182,7 @@ func parseDirective(input string) (*Directive, error) {
 
 	// Empty lines and comment lines
 	if len(trimmed) == 0 || strings.HasPrefix(trimmed, "//") {
-		return &Directive {
+		return &Directive{
 			Kind: dNop,
 			Args: nil,
 		}, nil
@@ -226,12 +229,12 @@ func createAsset(dr *Directive, basePath string) Asset {
 	var asset Asset
 
 	switch dr.Kind {
-		case dStyle:
-			asset.Kind = aStylesheet
-		case dScript:
-			asset.Kind = aScript
-		default:
-			panic("Unable to create an asset from directive")
+	case dStyle:
+		asset.Kind = aStylesheet
+	case dScript:
+		asset.Kind = aScript
+	default:
+		panic("Unable to create an asset from directive")
 	}
 
 	path, err := filepath.Abs(filepath.Join(basePath, dr.Args[0]))
