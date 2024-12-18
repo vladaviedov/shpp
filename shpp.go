@@ -16,10 +16,11 @@ import (
 )
 
 var opts struct {
-	Help    bool `long:"help" short:"h"`
-	Version bool `long:"version" short:"v"`
-	Stdin   bool `long:"stdin" short:"x"`
-	Marker  bool `long:"marker" short:"m"`
+	Help      bool `long:"help" short:"h"`
+	Version   bool `long:"version" short:"v"`
+	Stdin     bool `long:"stdin" short:"x"`
+	Marker    bool `long:"marker" short:"m"`
+	ShacInput bool `long:"shac" short:"c"`
 
 	Output string `long:"output" short:"o"`
 }
@@ -161,6 +162,7 @@ func usage(toFile *os.File) {
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-h, --help", "Show usage information")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-v, --version", "Show program version")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-m, --marker", "Insert inclusion markers")
+	fmt.Fprintf(toFile, "%-20s - %s\n", "-c, --shac", "Generate 'shac' input file")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-o, --output <file>", "Set output file")
 }
 
