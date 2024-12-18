@@ -12,6 +12,7 @@ import (
 
 	"github.com/jessevdk/go-flags"
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 var opts struct {
@@ -130,14 +131,24 @@ func main() {
 	}
 	defer inStream.Close()
 
-	wrappedDocument, _, err := compile(inStream, inWorkingDir, nil)
+	wrappedDocument, finalState, err := compile(inStream, inWorkingDir, nil)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
-		return
+		os.Exit(1)
+	}
+	document := wrappedDocument.FirstChild
+
+	// Place stylesheets and scripts into the head
+	err = placeHeadAssets(document, finalState)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 
+	// TODO: write asset metadata
+
 	// Unwrap from the phony and write to output
-	html.Render(outStream, wrappedDocument.FirstChild)
+	html.Render(outStream, document)
 
 	// Add end-of-file newline
 	outStream.WriteString("\n")
@@ -401,4 +412,101 @@ func convertPath(path string, fileDir string) string {
 	}
 
 	return filepath.Join(fileDir, path)
+}
+
+func placeHeadAssets(document *html.Node, state *State) error {
+	head := findHead(document)
+
+	for i, asset := range state.Assets {
+		headAsset, err := generateHeadAsset(&asset, uint64(i))
+		if err != nil {
+			return err
+		}
+
+		if headAsset != nil {
+			head.AppendChild(headAsset)
+		}
+	}
+
+	return nil
+}
+
+func findHead(document *html.Node) *html.Node {
+	for node := range document.ChildNodes() {
+		if node.DataAtom == atom.Head {
+			return node
+		}
+	}
+
+	panic("generated document is missing the 'head' tag")
+}
+
+func generateHeadAsset(asset *Asset, id uint64) (*html.Node, error) {
+	switch asset.Kind {
+	case aStylesheet:
+		return generateStyleTag(asset, id)
+	case aScript:
+		return generateScriptTag(asset, id)
+	default:
+		// No head tag required for this asset
+		return nil, nil
+	}
+}
+
+func generateStyleTag(asset *Asset, _ uint64) (*html.Node, error) {
+	// TODO: IF in linking mode, use <link> tag
+	// TODO: ELSE (standalone), insert file contents
+	if false {
+		// TODO: implement
+		return nil, nil
+	} else {
+		fileContent, err := os.ReadFile(asset.SourcePath)
+		if err != nil {
+			return nil, err
+		}
+
+		// Text inside of <style>
+		contentNode := &html.Node{
+			Type: html.TextNode,
+			Data: string(fileContent),
+		}
+		// Actual <style> tag
+		tag := &html.Node{
+			Type:     html.ElementNode,
+			Data:     "style",
+			DataAtom: atom.Style,
+		}
+
+		tag.AppendChild(contentNode)
+		return tag, nil
+	}
+}
+
+func generateScriptTag(asset *Asset, _ uint64) (*html.Node, error) {
+	// TODO: IF in linking mode, use <link> tag
+	// TODO: ELSE (standalone), insert file contents
+	if false {
+		// TODO: implement
+		return nil, nil
+	} else {
+		fileContent, err := os.ReadFile(asset.SourcePath)
+		if err != nil {
+			return nil, err
+		}
+
+		// Text inside of <script>
+		contentNode := &html.Node{
+			Type: html.TextNode,
+			Data: string(fileContent),
+		}
+		// Actual <script> tag
+		tag := &html.Node{
+			Type:     html.ElementNode,
+			Data:     "script",
+			DataAtom: atom.Script,
+		}
+
+		tag.AppendChild(contentNode)
+		return tag, nil
+	}
 }
