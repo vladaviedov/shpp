@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/jessevdk/go-flags"
@@ -420,7 +421,7 @@ func placeHeadAssets(document *html.Node, state *State) error {
 	head := findHead(document)
 
 	for i, asset := range state.Assets {
-		headAsset, err := generateHeadAsset(&asset, uint64(i))
+		headAsset, err := generateHeadAsset(&asset, i)
 		if err != nil {
 			return err
 		}
@@ -443,7 +444,7 @@ func findHead(document *html.Node) *html.Node {
 	panic("generated document is missing the 'head' tag")
 }
 
-func generateHeadAsset(asset *Asset, id uint64) (*html.Node, error) {
+func generateHeadAsset(asset *Asset, id int) (*html.Node, error) {
 	switch asset.Kind {
 	case aStylesheet:
 		return generateStyleTag(asset, id)
@@ -455,13 +456,26 @@ func generateHeadAsset(asset *Asset, id uint64) (*html.Node, error) {
 	}
 }
 
-func generateStyleTag(asset *Asset, _ uint64) (*html.Node, error) {
-	// TODO: IF in linking mode, use <link> tag
-	// TODO: ELSE (standalone), insert file contents
-	if false {
-		// TODO: implement
-		return nil, nil
+func generateStyleTag(asset *Asset, id int) (*html.Node, error) {
+	if opts.ShacInput {
+		// <link rel="stylesheet" href="@id@">
+		return &html.Node{
+			Type:     html.ElementNode,
+			Data:     "link",
+			DataAtom: atom.Link,
+			Attr: []html.Attribute{
+				{
+					Key: "rel",
+					Val: "stylesheet",
+				},
+				{
+					Key: "href",
+					Val: "@" + strconv.Itoa(id) + "@",
+				},
+			},
+		}, nil
 	} else {
+		// <style>contents</style>
 		fileContent, err := os.ReadFile(asset.SourcePath)
 		if err != nil {
 			return nil, err
@@ -484,13 +498,22 @@ func generateStyleTag(asset *Asset, _ uint64) (*html.Node, error) {
 	}
 }
 
-func generateScriptTag(asset *Asset, _ uint64) (*html.Node, error) {
-	// TODO: IF in linking mode, use <link> tag
-	// TODO: ELSE (standalone), insert file contents
-	if false {
-		// TODO: implement
-		return nil, nil
+func generateScriptTag(asset *Asset, id int) (*html.Node, error) {
+	if opts.ShacInput {
+		// <script src="@id@">
+		return &html.Node{
+			Type:     html.ElementNode,
+			Data:     "script",
+			DataAtom: atom.Script,
+			Attr: []html.Attribute{
+				{
+					Key: "src",
+					Val: "@" + strconv.Itoa(id) + "@",
+				},
+			},
+		}, nil
 	} else {
+		// <script>contents</script>
 		fileContent, err := os.ReadFile(asset.SourcePath)
 		if err != nil {
 			return nil, err
