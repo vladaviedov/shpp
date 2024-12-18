@@ -116,9 +116,14 @@ func main() {
 		}
 	} else {
 		inStream, err = os.Open(args[0])
-		inWorkingDir = path.Dir(args[0])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to open source file: %s\n", err.Error())
+			os.Exit(1)
+		}
+
+		inWorkingDir, err = filepath.Abs(path.Dir(args[0]))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to determined working directory: %s\n", err.Error())
 			os.Exit(1)
 		}
 	}
@@ -245,3 +250,10 @@ func createAsset(dr *Directive, basePath string) Asset {
 	return asset
 }
 
+func convertPath(path string, fileDir string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+
+	return filepath.Join(fileDir, path)
+}
