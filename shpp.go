@@ -147,7 +147,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: write asset metadata
+	// shac preamble
+	if opts.ShacInput {
+		writeShacPreamble(outStream, finalState)
+	}
 
 	// Unwrap from the phony and write to output
 	html.Render(outStream, document)
@@ -534,4 +537,12 @@ func generateScriptTag(asset *Asset, id int) (*html.Node, error) {
 		tag.AppendChild(contentNode)
 		return tag, nil
 	}
+}
+
+func writeShacPreamble(file *os.File, state *State) {
+	fmt.Fprintf(file, "@page %s\n", state.PageURL)
+	for _, asset := range state.Assets {
+		fmt.Fprintf(file, "@asset %s\n", asset.SourcePath)
+	}
+	fmt.Fprintf(file, "@html\n")
 }
