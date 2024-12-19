@@ -138,7 +138,19 @@ func main() {
 	}
 	defer inStream.Close()
 
-	wrappedDocument, finalState, err := compile(inStream, inWorkingDir, nil)
+	// Initial parser state
+	var defaultName string
+	if opts.Stdin {
+		defaultName = "stdin"
+	} else {
+		defaultName, _ = strings.CutSuffix(inStream.Name(), ".shpp")
+	}
+	state := &State{
+		PageURL: defaultName + ".html",
+		FileDir: inWorkingDir,
+	}
+
+	wrappedDocument, err := compile(inStream, state, nil)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
@@ -146,7 +158,7 @@ func main() {
 	document := wrappedDocument.FirstChild
 
 	// Place stylesheets and scripts into the head
-	err = placeHeadAssets(document, finalState)
+	err = placeHeadAssets(document, state)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
@@ -154,7 +166,7 @@ func main() {
 
 	// shac preamble
 	if opts.ShacInput {
-		writeShacPreamble(outStream, finalState)
+		writeShacPreamble(outStream, state)
 	}
 
 	// Unwrap from the phony and write to output
@@ -179,24 +191,19 @@ func version() {
 	fmt.Printf("shpp version %s\n", Version)
 }
 
-func compile(file *os.File, fileDir string, htmlContext *html.Node) (*html.Node, *State, error) {
-	defaultName, _ := strings.CutSuffix(file.Name(), ".shpp")
-	state := &State{
-		PageURL: defaultName + ".html",
-		FileDir: fileDir,
-	}
+func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, error) {
 
 	// Preamble
 	err := readPreamble(file, state)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	reader := bufio.NewReader(file)
 	tagList, err := html.ParseFragment(reader, htmlContext)
 	if err != nil {
 		msg := fmt.Sprintf("failed to parse HTML document: %s\n", err.Error())
-		return nil, nil, errors.New(msg)
+		return nil, errors.New(msg)
 	}
 
 	// Wrap the parsed tag into a phony tag
@@ -217,11 +224,11 @@ func compile(file *os.File, fileDir string, htmlContext *html.Node) (*html.Node,
 	for node := range phony.Descendants() {
 		err = processNode(node, state)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	return phony, state, nil
+	return phony, nil
 }
 
 func readPreamble(file *os.File, state *State) error {
@@ -356,8 +363,10 @@ func processNode(node *html.Node, state *State) error {
 			}
 			defer file.Close()
 
-			// TODO: need to merge state assets
-			wrappedTags, _, err := compile(file, path.Dir(absPath), node.Parent)
+			oldDir := state.FileDir
+			state.FileDir = path.Dir(absPath)
+			wrappedTags, err := compile(file, state, node.Parent)
+			state.FileDir = oldDir
 			if err != nil {
 				return err
 			}
