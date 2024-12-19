@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -43,6 +44,7 @@ const (
 	dScript
 	dUrl
 	dInclude
+	dManage
 )
 
 type Asset struct {
@@ -72,6 +74,7 @@ var directiveDict = map[string]DirectiveDescription{
 	"@script":  {Kind: dScript, RequiredArgs: 1, OptionalArgs: 0},
 	"@url":     {Kind: dUrl, RequiredArgs: 1, OptionalArgs: 0},
 	"@include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
+	"@manage":  {Kind: dManage, RequiredArgs: 0, OptionalArgs: 1},
 }
 
 // Populated by build system
@@ -242,10 +245,13 @@ func readPreamble(file *os.File, state *State) error {
 		switch kind {
 		case dInclude:
 			return errors.New("syntax error: @include not allowed in preamble\n")
+		case dManage:
+			return errors.New("syntax error: @manage not allowed in preamble\n")
 		case dStyle:
-			fallthrough
+			asset := createAsset(aStylesheet, state.FileDir, dr.Args[0])
+			state.Assets = append(state.Assets, asset)
 		case dScript:
-			asset := createAsset(dr, state.FileDir)
+			asset := createAsset(aScript, state.FileDir, dr.Args[0])
 			state.Assets = append(state.Assets, asset)
 		case dUrl:
 			if urlChanged {
@@ -314,25 +320,16 @@ func parseDirective(input string) (*Directive, error) {
 	}, nil
 }
 
-func createAsset(dr *Directive, basePath string) Asset {
-	var asset Asset
-
-	switch dr.Kind {
-	case dStyle:
-		asset.Kind = aStylesheet
-	case dScript:
-		asset.Kind = aScript
-	default:
-		panic("Unable to create an asset from directive")
-	}
-
-	path, err := filepath.Abs(filepath.Join(basePath, dr.Args[0]))
+func createAsset(kind AssetKind, basePath string, path string) Asset {
+	path, err := filepath.Abs(filepath.Join(basePath, path))
 	if err != nil {
 		panic(err)
 	}
 
-	asset.SourcePath = path
-	return asset
+	return Asset{
+		Kind:       kind,
+		SourcePath: path,
+	}
 }
 
 func processNode(node *html.Node, state *State) error {
@@ -406,6 +403,36 @@ func processNode(node *html.Node, state *State) error {
 				}
 				node.Parent.InsertBefore(marker, node)
 			}
+		case dManage:
+			if !opts.ShacInput {
+				fmt.Fprintf(os.Stderr, "warning: @manage ignored (--shac not enabled)\n")
+				break
+			}
+
+			target := node.NextSibling
+			if target == nil || target.Type != html.ElementNode {
+				return errors.New("syntax error: @manage must be followed by an element\n")
+			}
+
+			// Use 'src' by default
+			attrName := "src"
+			if len(dr.Args) == 1 {
+				attrName = dr.Args[0]
+			}
+
+			// Find attribute
+			index := slices.IndexFunc(target.Attr, func(a html.Attribute) bool {
+				return a.Key == attrName
+			})
+			if index < 0 {
+				msg := fmt.Sprintf("syntax error: @manage target is missing '%s' attribute\n", attrName)
+				return errors.New(msg)
+			}
+			attr := &target.Attr[index].Val
+
+			// Record asset and replace with shac placeholder
+			state.Assets = append(state.Assets, createAsset(aBinary, state.FileDir, *attr))
+			*attr = "@" + strconv.Itoa(len(state.Assets)-1) + "@"
 		case dStyle:
 			return errors.New("syntax error: @style must be placed in the preamble\n")
 		case dScript:
