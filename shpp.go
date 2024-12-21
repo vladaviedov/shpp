@@ -348,7 +348,7 @@ func processNode(node *html.Node, state *State) error {
 	lines := strings.Split(node.Data, "\n")
 	unusedText := new(strings.Builder)
 
-	for _, line := range lines {
+	for i, line := range lines {
 		dr, err := parseDirective(line)
 		if err != nil {
 			return err
@@ -450,9 +450,9 @@ func processNode(node *html.Node, state *State) error {
 			fallthrough
 		case dHtml:
 			// Store used but uncommited text (for splitting the node)
-			if len(strings.Trim(line, " \t\n")) != 0 {
-				unusedText.WriteString(strings.Trim(line, " \t\n"))
-				unusedText.WriteString(" ")
+			unusedText.WriteString(line)
+			if i != len(lines) - 1 {
+				unusedText.WriteString("\n")
 			}
 		}
 	}
