@@ -191,7 +191,6 @@ func version() {
 }
 
 func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, error) {
-
 	// Preamble
 	err := readPreamble(file, state)
 	if err != nil {
@@ -451,7 +450,7 @@ func processNode(node *html.Node, state *State) error {
 		case dHtml:
 			// Store used but uncommited text (for splitting the node)
 			unusedText.WriteString(line)
-			if i != len(lines) - 1 {
+			if i != len(lines)-1 {
 				unusedText.WriteString("\n")
 			}
 		}
