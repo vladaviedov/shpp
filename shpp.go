@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -233,11 +232,19 @@ func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, e
 
 func readPreamble(file *os.File, state *State) error {
 	reader := bufio.NewReader(file)
-	consumed := int64(0)
 	urlChanged := false
 
-	kind := dNop
-	for kind != dHtml {
+	for {
+		nextChar, err := reader.Peek(1)
+		if err != nil {
+			return err
+		}
+
+		// Reached HTML section
+		if nextChar[0] == '<' {
+			break
+		}
+
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			return err
@@ -248,8 +255,7 @@ func readPreamble(file *os.File, state *State) error {
 			return err
 		}
 
-		kind = dr.Kind
-		switch kind {
+		switch dr.Kind {
 		case dInclude:
 			return errors.New("syntax error: @include not allowed in preamble\n")
 		case dManage:
@@ -268,14 +274,8 @@ func readPreamble(file *os.File, state *State) error {
 			state.PageURL = dr.Args[0]
 			urlChanged = true
 		}
-
-		if dr.Kind != dHtml {
-			consumed += int64(len(line))
-		}
 	}
 
-	// Rewind file to "place" back the html data
-	file.Seek(consumed, io.SeekStart)
 	return nil
 }
 
