@@ -191,13 +191,14 @@ func version() {
 }
 
 func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, error) {
+	reader := bufio.NewReader(file)
+
 	// Preamble
-	err := readPreamble(file, state)
+	err := readPreamble(reader, state)
 	if err != nil {
 		return nil, err
 	}
 
-	reader := bufio.NewReader(file)
 	tagList, err := html.ParseFragment(reader, htmlContext)
 	if err != nil {
 		msg := fmt.Sprintf("failed to parse HTML document: %s\n", err.Error())
@@ -229,8 +230,7 @@ func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, e
 	return phony, nil
 }
 
-func readPreamble(file *os.File, state *State) error {
-	reader := bufio.NewReader(file)
+func readPreamble(reader *bufio.Reader, state *State) error {
 	urlChanged := false
 
 	for {
