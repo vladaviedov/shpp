@@ -373,7 +373,7 @@ func processNode(node *html.Node, state *State) error {
 			// Any text before the include become a text node
 			if unusedText.Len() != 0 {
 				textNode := &html.Node{
-					Type: html.ElementNode,
+					Type: html.TextNode,
 					Data: unusedText.String(),
 				}
 
