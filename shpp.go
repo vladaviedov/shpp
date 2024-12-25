@@ -156,8 +156,8 @@ func main() {
 	}
 	document := wrappedDocument.FirstChild
 
-	// Place stylesheets and scripts into the head
-	err = placeHeadAssets(document, state)
+	// Place any necessary tags into the head
+	err = updateHead(document, state)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
@@ -469,7 +469,7 @@ func convertPath(path string, fileDir string) string {
 	return filepath.Join(fileDir, path)
 }
 
-func placeHeadAssets(document *html.Node, state *State) error {
+func updateHead(document *html.Node, state *State) error {
 	head := findHead(document)
 
 	for i, asset := range state.Assets {
@@ -482,6 +482,31 @@ func placeHeadAssets(document *html.Node, state *State) error {
 			head.AppendChild(headAsset)
 		}
 	}
+
+	// On shac files, we want to add a base tag
+	if !opts.ShacInput {
+		return nil
+	}
+
+	// Done, if base tag already exists
+	for child := range head.ChildNodes() {
+		if child.DataAtom == atom.Base {
+			return nil
+		}
+	}
+
+	// Base should be placed before any links
+	head.InsertBefore(&html.Node{
+		Type:     html.ElementNode,
+		Data:     "base",
+		DataAtom: atom.Base,
+		Attr: []html.Attribute{
+			{
+				Key: "href",
+				Val: "@$@/",
+			},
+		},
+	}, head.FirstChild)
 
 	return nil
 }
