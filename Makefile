@@ -3,11 +3,19 @@ BUILD=$(PWD)/build
 VERSION=$(shell git describe --tags --dirty)
 
 GO=go
-GOFLAGS=-N -l
+GOFLAGS=
+GOFLAGS_DEBUG=-N -l
 LDFLAGS=-X main.Version=$(VERSION)
 
 TARGET=$(BUILD)/bin/shpp
 PREFIX?=/usr
+
+.PHONY: release
+release: $(TARGET)
+
+.PHONY: debug
+debug: GOFLAGS+=$(GOFLAGS_DEBUG)
+debug: $(TARGET)
 
 $(TARGET): $(BUILD)/bin shpp.go
 	$(GO) build -gcflags="$(GOFLAGS)" -ldflags="$(LDFLAGS)" -o $@
