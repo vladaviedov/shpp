@@ -169,6 +169,7 @@ func main() {
 	}
 
 	// Unwrap from the phony and write to output
+	fmt.Fprintf(outStream, "<!DOCTYPE html>")
 	html.Render(outStream, document)
 
 	// Add end-of-file newline
