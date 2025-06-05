@@ -17,13 +17,18 @@ import (
 )
 
 var opts struct {
-	Help      bool `long:"help" short:"h"`
-	Version   bool `long:"version" short:"v"`
-	Stdin     bool `long:"stdin" short:"x"`
-	Marker    bool `long:"marker" short:"m"`
-	ShacInput bool `long:"shac" short:"c"`
+	// General options
+	Help    bool   `long:"help" short:"h"`
+	Version bool   `long:"version" short:"v"`
+	Stdin   bool   `long:"stdin" short:"x"`
+	Marker  bool   `long:"marker" short:"m"`
+	Output  string `long:"output" short:"o"`
 
-	Output string `long:"output" short:"o"`
+	// Integration
+	ShacInput      bool   `long:"shac" short:"c"`
+	ShellEscape    bool   `long:"shell-escape" short:"s"`
+	PandocBinary   string `long:"pandoc-binary" default:"pandoc"`
+	PandocOptsFile string `lomg:"pandoc-opts"`
 }
 
 type AssetKind uint64
@@ -43,6 +48,7 @@ const (
 	dScript
 	dUrl
 	dInclude
+	dPandoc
 	dManage
 )
 
@@ -73,6 +79,7 @@ var directiveDict = map[string]DirectiveDescription{
 	"@script":  {Kind: dScript, RequiredArgs: 1, OptionalArgs: 0},
 	"@url":     {Kind: dUrl, RequiredArgs: 1, OptionalArgs: 0},
 	"@include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
+	"@pandoc":  {Kind: dPandoc, RequiredArgs: 1, OptionalArgs: 1},
 	"@manage":  {Kind: dManage, RequiredArgs: 0, OptionalArgs: 1},
 }
 
@@ -179,12 +186,18 @@ func main() {
 func usage(toFile *os.File) {
 	fmt.Fprintf(toFile, "usage: %s [options] <source>\n", os.Args[0])
 	fmt.Fprintf(toFile, "\n")
+	fmt.Fprintf(toFile, "== General options ==\n")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-x, --stdin", "Read input file from stdin (source should be left empty)")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-h, --help", "Show usage information")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-v, --version", "Show program version")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-m, --marker", "Insert inclusion markers")
-	fmt.Fprintf(toFile, "%-20s - %s\n", "-c, --shac", "Generate 'shac' input file")
 	fmt.Fprintf(toFile, "%-20s - %s\n", "-o, --output <file>", "Set output file")
+	fmt.Fprintf(toFile, "\n")
+	fmt.Fprintf(toFile, "== Integrations ==\n")
+	fmt.Fprintf(toFile, "%-20s - %s\n", "-c, --shac", "Generate 'shac' input file")
+	fmt.Fprintf(toFile, "%-20s - %s\n", "-s, --shell-escape", "Enable shell escape")
+	fmt.Fprintf(toFile, "%-20s - %s\n", "--pandoc-binary", "Set pandoc binary path")
+	fmt.Fprintf(toFile, "%-20s - %s\n", "--pandoc-opts", "Set pandoc options file")
 }
 
 func version() {
@@ -258,6 +271,8 @@ func readPreamble(reader *bufio.Reader, state *State) error {
 		switch dr.Kind {
 		case dInclude:
 			return errors.New("syntax error: @include not allowed in preamble\n")
+		case dPandoc:
+			return errors.New("syntax error: @pandoc not allowed in preamble\n")
 		case dManage:
 			return errors.New("syntax error: @manage not allowed in preamble\n")
 		case dStyle:
