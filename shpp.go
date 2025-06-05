@@ -636,3 +636,31 @@ func writeShacPreamble(file *os.File, state *State) {
 	}
 	fmt.Fprintf(file, "@html\n")
 }
+
+func pandocConvert(inputPath string, inputFormat string) (*os.File, error) {
+	// Create temp file for pandoc output
+	pandocOutput, err := os.CreateTemp("", "*.shpp")
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to create temp file: %s\n", err.Error()))
+	}
+
+	// Setup pandoc command
+	args := []string{"-t", "html", "--quiet", "-o", pandocOutput.Name()}
+	if inputFormat != "" {
+		args = append(args, "-f", inputFormat)
+	}
+	if opts.PandocOptsFile != "" {
+		args = append(args, "-d", opts.PandocOptsFile)
+	}
+	args = append(args, inputPath)
+
+	// Run pandoc redirecting stderr to here
+	cmd := exec.Command(opts.PandocBinary, args...)
+	cmd.Stderr = os.Stderr
+	_, err = cmd.Output()
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to execute pandoc: %s\n", err.Error()))
+	}
+
+	return pandocOutput, nil
+}
