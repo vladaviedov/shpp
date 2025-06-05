@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"slices"
@@ -370,32 +371,55 @@ func processNode(node *html.Node, state *State) error {
 		}
 
 		switch dr.Kind {
+		case dPandoc:
+			absPath := convertPath(dr.Args[0], state.FileDir)
+			inputFormat := ""
+			if len(dr.Args) == 2 {
+				inputFormat = dr.Args[1]
+			}
+
+			if !opts.ShellEscape {
+				fmt.Fprintf(os.Stderr, "warning: @pandoc ignored (--shell-escape not enabled)\n")
+				break
+			}
+
+			// Run pandoc logic
+			pandocOut, err := pandocConvert(absPath, inputFormat)
+			if err != nil {
+				return err
+			}
+			defer os.Remove(pandocOut.Name())
+
+			// Include as normal html
+			// Add inclusion marker
+			if opts.Marker {
+				marker := &html.Node{
+					Type: html.CommentNode,
+					Data: fmt.Sprintf("START %s", dr.Args[0]),
+				}
+				node.Parent.InsertBefore(marker, node)
+			}
+
+			oldDir := state.FileDir
+			state.FileDir = path.Dir(absPath)
+			includeFile(pandocOut, state, node, unusedText)
+			state.FileDir = oldDir
+
+			// Add inclusion marker
+			if opts.Marker {
+				marker := &html.Node{
+					Type: html.CommentNode,
+					Data: fmt.Sprintf("END %s", dr.Args[0]),
+				}
+				node.Parent.InsertBefore(marker, node)
+			}
 		case dInclude:
 			absPath := convertPath(dr.Args[0], state.FileDir)
 			file, err := os.Open(absPath)
 			if err != nil {
-				return errors.New("failed to open source file: %s\n")
+				return errors.New(fmt.Sprintf("failed to open source file: %s\n", absPath))
 			}
 			defer file.Close()
-
-			oldDir := state.FileDir
-			state.FileDir = path.Dir(absPath)
-			wrappedTags, err := compile(file, state, node.Parent)
-			state.FileDir = oldDir
-			if err != nil {
-				return err
-			}
-
-			// Any text before the include become a text node
-			if unusedText.Len() != 0 {
-				textNode := &html.Node{
-					Type: html.TextNode,
-					Data: unusedText.String(),
-				}
-
-				node.Parent.InsertBefore(textNode, node)
-				unusedText.Reset()
-			}
 
 			// Add inclusion marker
 			if opts.Marker {
@@ -406,18 +430,10 @@ func processNode(node *html.Node, state *State) error {
 				node.Parent.InsertBefore(marker, node)
 			}
 
-			// Now add included nodes
-			tag := wrappedTags.FirstChild
-			for tag != nil {
-				// Appease the HTML parser
-				wrappedTags.RemoveChild(tag)
-
-				// Push all the new tags before the original one
-				node.Parent.InsertBefore(tag, node)
-
-				// Update tag reference
-				tag = wrappedTags.FirstChild
-			}
+			oldDir := state.FileDir
+			state.FileDir = path.Dir(absPath)
+			includeFile(file, state, node, unusedText)
+			state.FileDir = oldDir
 
 			// Add inclusion marker
 			if opts.Marker {
@@ -627,6 +643,39 @@ func generateScriptTag(asset *Asset, id int) (*html.Node, error) {
 		tag.AppendChild(contentNode)
 		return tag, nil
 	}
+}
+
+func includeFile(file *os.File, state *State, node *html.Node, unusedText *strings.Builder) error {
+	wrappedTags, err := compile(file, state, node.Parent)
+	if err != nil {
+		return err
+	}
+
+	// Any text before the include become a text node
+	if unusedText.Len() != 0 {
+		textNode := &html.Node{
+			Type: html.TextNode,
+			Data: unusedText.String(),
+		}
+
+		node.Parent.InsertBefore(textNode, node)
+		unusedText.Reset()
+	}
+
+	// Now add included nodes
+	tag := wrappedTags.FirstChild
+	for tag != nil {
+		// Appease the HTML parser
+		wrappedTags.RemoveChild(tag)
+
+		// Push all the new tags before the original one
+		node.Parent.InsertBefore(tag, node)
+
+		// Update tag reference
+		tag = wrappedTags.FirstChild
+	}
+
+	return nil
 }
 
 func writeShacPreamble(file *os.File, state *State) {
