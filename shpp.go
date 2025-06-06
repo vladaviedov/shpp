@@ -24,6 +24,7 @@ var opts struct {
 	Stdin   bool   `long:"stdin" short:"x"`
 	Marker  bool   `long:"marker" short:"m"`
 	Output  string `long:"output" short:"o"`
+	Root    string `long:"root" short:"r"`
 
 	// Integration
 	ShacInput      bool   `long:"shac" short:"c"`
@@ -123,13 +124,14 @@ func main() {
 
 	var inStream *os.File
 	var inWorkingDir string
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to fetch current directory: %s\n", err.Error())
+		os.Exit(1)
+	}
+
 	if opts.Stdin {
-		inStream = os.Stdin
-		inWorkingDir, err = os.Getwd()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to fetch current directory: %s\n", err.Error())
-			os.Exit(1)
-		}
+		inWorkingDir = cwd
 	} else {
 		inStream, err = os.Open(args[0])
 		if err != nil {
@@ -144,6 +146,11 @@ func main() {
 		}
 	}
 	defer inStream.Close()
+
+	// Make root directory an absolute path
+	if !filepath.IsAbs(opts.Root) {
+		opts.Root = filepath.Join(cwd, opts.Root)
+	}
 
 	// Initial parser state
 	var defaultName string
@@ -193,6 +200,7 @@ func usage(toFile *os.File) {
 	fmt.Fprintf(toFile, "%-25s - %s\n", "-v, --version", "Show program version")
 	fmt.Fprintf(toFile, "%-25s - %s\n", "-m, --marker", "Insert inclusion markers")
 	fmt.Fprintf(toFile, "%-25s - %s\n", "-o, --output <file>", "Set output file")
+	fmt.Fprintf(toFile, "%-25s - %s\n", "-r, --root <path>", "Set root directory")
 	fmt.Fprintf(toFile, "\n")
 	fmt.Fprintf(toFile, "== Integrations ==\n")
 	fmt.Fprintf(toFile, "%-25s - %s\n", "-c, --shac", "Generate 'shac' input file")
@@ -494,10 +502,17 @@ func processNode(node *html.Node, state *State) error {
 }
 
 func convertPath(path string, fileDir string) string {
+	// Absolute paths
 	if filepath.IsAbs(path) {
 		return path
 	}
 
+	// Root path substitution
+	if path[0] == '$' {
+		return filepath.Join(opts.Root, path[1:])
+	}
+
+	// Relative paths
 	return filepath.Join(fileDir, path)
 }
 
