@@ -351,15 +351,10 @@ func parseDirective(input string) (*Directive, error) {
 	}, nil
 }
 
-func createAsset(kind AssetKind, basePath string, path string) Asset {
-	path, err := filepath.Abs(filepath.Join(basePath, path))
-	if err != nil {
-		panic(err)
-	}
-
+func createAsset(kind AssetKind, fileDir string, path string) Asset {
 	return Asset{
 		Kind:       kind,
-		SourcePath: path,
+		SourcePath: convertPath(path, fileDir),
 	}
 }
 
