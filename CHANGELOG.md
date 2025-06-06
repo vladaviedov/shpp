@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+- Generate HTML DOCTYPE to avoid quirks mode
+- Inline inclusion of non-HTML documents via `pandoc`
+- Root directory substitution
+- Debug and release builds
+- New directives
+    - `@pandoc`
+
 ## 0.4.0
 - `shac`: Manage binary assets
 - Fix bugs in HTML generation
