@@ -49,6 +49,7 @@ const (
 	dStyle
 	dScript
 	dUrl
+	dIgnore
 	dInclude
 	dPandoc
 	dManage
@@ -80,6 +81,7 @@ var directiveDict = map[string]DirectiveDescription{
 	"@style":   {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
 	"@script":  {Kind: dScript, RequiredArgs: 1, OptionalArgs: 0},
 	"@url":     {Kind: dUrl, RequiredArgs: 1, OptionalArgs: 0},
+	"@ignore":  {Kind: dIgnore, RequiredArgs: 0, OptionalArgs: 0},
 	"@include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
 	"@pandoc":  {Kind: dPandoc, RequiredArgs: 1, OptionalArgs: 1},
 	"@manage":  {Kind: dManage, RequiredArgs: 0, OptionalArgs: 1},
@@ -164,11 +166,22 @@ func main() {
 		FileDir: inWorkingDir,
 	}
 
-	wrappedDocument, err := compile(inStream, state, nil)
+	wrappedDocument, ignore, err := compile(inStream, state, nil)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}
+
+	// Ignore directive
+	if ignore {
+		// For shac, need to generate a fake document
+		if opts.ShacInput {
+			outStream.WriteString("@ignore\n")
+		}
+
+		os.Exit(0)
+	}
+
 	document := wrappedDocument.FirstChild
 
 	// Place any necessary tags into the head
@@ -213,19 +226,24 @@ func version() {
 	fmt.Printf("shpp version %s\n", Version)
 }
 
-func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, error) {
+func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, bool, error) {
 	reader := bufio.NewReader(file)
 
 	// Preamble
-	err := readPreamble(reader, state)
+	ignore, err := readPreamble(reader, state)
 	if err != nil {
-		return nil, err
+		return nil, false, err
+	}
+
+	// Ignore directive found
+	if ignore {
+		return nil, true, nil
 	}
 
 	tagList, err := html.ParseFragment(reader, htmlContext)
 	if err != nil {
 		msg := fmt.Sprintf("failed to parse HTML document: %s\n", err.Error())
-		return nil, errors.New(msg)
+		return nil, false, errors.New(msg)
 	}
 
 	// Wrap the parsed tag into a phony tag
@@ -246,20 +264,20 @@ func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, e
 	for node := range phony.Descendants() {
 		err = processNode(node, state)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
-	return phony, nil
+	return phony, false, nil
 }
 
-func readPreamble(reader *bufio.Reader, state *State) error {
+func readPreamble(reader *bufio.Reader, state *State) (bool, error) {
 	urlChanged := false
 
 	for {
 		nextChar, err := reader.Peek(1)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		// Reached HTML section
@@ -269,21 +287,21 @@ func readPreamble(reader *bufio.Reader, state *State) error {
 
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		dr, err := parseDirective(line)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		switch dr.Kind {
 		case dInclude:
-			return errors.New("syntax error: @include not allowed in preamble\n")
+			return false, errors.New("syntax error: @include not allowed in preamble\n")
 		case dPandoc:
-			return errors.New("syntax error: @pandoc not allowed in preamble\n")
+			return false, errors.New("syntax error: @pandoc not allowed in preamble\n")
 		case dManage:
-			return errors.New("syntax error: @manage not allowed in preamble\n")
+			return false, errors.New("syntax error: @manage not allowed in preamble\n")
 		case dStyle:
 			asset := createAsset(aStylesheet, state.FileDir, dr.Args[0])
 			state.Assets = append(state.Assets, asset)
@@ -297,10 +315,12 @@ func readPreamble(reader *bufio.Reader, state *State) error {
 
 			state.PageURL = dr.Args[0]
 			urlChanged = true
+		case dIgnore:
+			return true, nil
 		}
 	}
 
-	return nil
+	return false, nil
 }
 
 func parseDirective(input string) (*Directive, error) {
@@ -656,9 +676,13 @@ func generateScriptTag(asset *Asset, id int) (*html.Node, error) {
 }
 
 func includeFile(file *os.File, state *State, node *html.Node, unusedText *strings.Builder) error {
-	wrappedTags, err := compile(file, state, node.Parent)
+	wrappedTags, ignore, err := compile(file, state, node.Parent)
 	if err != nil {
 		return err
+	}
+
+	if ignore {
+		return nil
 	}
 
 	// Any text before the include become a text node
