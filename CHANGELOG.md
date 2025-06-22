@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+- New directives
+    - `@ignore`
+
 ## 0.5.0
 - Generate HTML DOCTYPE to avoid quirks mode
 - Inline inclusion of non-HTML documents via `pandoc`
