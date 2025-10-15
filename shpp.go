@@ -30,7 +30,7 @@ var opts struct {
 	ShacInput      bool   `long:"shac" short:"c"`
 	ShellEscape    bool   `long:"shell-escape" short:"s"`
 	PandocBinary   string `long:"pandoc-binary" default:"pandoc"`
-	PandocOptsFile string `lomg:"pandoc-opts"`
+	PandocOptsFile string `long:"pandoc-opts"`
 }
 
 type AssetKind uint64
