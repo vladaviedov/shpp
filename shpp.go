@@ -135,6 +135,7 @@ func main() {
 	}
 
 	if opts.Stdin {
+		inStream = os.Stdin
 		inWorkingDir = cwd
 	} else {
 		inStream, err = os.Open(args[0])
