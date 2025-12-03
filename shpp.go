@@ -38,6 +38,8 @@ type AssetKind uint64
 const (
 	aStylesheet AssetKind = iota
 	aScript
+	aScriptDefer
+	aScriptAsync
 	aBinary
 )
 
@@ -79,7 +81,7 @@ type DirectiveDescription struct {
 
 var directiveDict = map[string]DirectiveDescription{
 	"@style":   {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
-	"@script":  {Kind: dScript, RequiredArgs: 1, OptionalArgs: 0},
+	"@script":  {Kind: dScript, RequiredArgs: 1, OptionalArgs: 1},
 	"@url":     {Kind: dUrl, RequiredArgs: 1, OptionalArgs: 0},
 	"@ignore":  {Kind: dIgnore, RequiredArgs: 0, OptionalArgs: 0},
 	"@include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
@@ -306,7 +308,23 @@ func readPreamble(reader *bufio.Reader, state *State) (bool, error) {
 			asset := createAsset(aStylesheet, state.FileDir, dr.Args[0])
 			state.Assets = append(state.Assets, asset)
 		case dScript:
-			asset := createAsset(aScript, state.FileDir, dr.Args[0])
+			modifier := ""
+			if len(dr.Args) > 1 {
+				modifier = dr.Args[1]
+			}
+
+			var asset Asset
+			switch modifier {
+			case "defer":
+				asset = createAsset(aScriptDefer, state.FileDir, dr.Args[0])
+			case "async":
+				asset = createAsset(aScriptAsync, state.FileDir, dr.Args[0])
+			case "":
+				asset = createAsset(aScript, state.FileDir, dr.Args[0])
+			default:
+				return false, errors.New("syntax error: unknown @script modifier")
+			}
+
 			state.Assets = append(state.Assets, asset)
 		case dUrl:
 			if urlChanged {
@@ -588,7 +606,11 @@ func generateHeadAsset(asset *Asset, id int) (*html.Node, error) {
 	case aStylesheet:
 		return generateStyleTag(asset, id)
 	case aScript:
-		return generateScriptTag(asset, id)
+		return generateScriptTag(asset, id, "")
+	case aScriptDefer:
+		return generateScriptTag(asset, id, "defer")
+	case aScriptAsync:
+		return generateScriptTag(asset, id, "async")
 	default:
 		// No head tag required for this asset
 		return nil, nil
@@ -637,10 +659,10 @@ func generateStyleTag(asset *Asset, id int) (*html.Node, error) {
 	}
 }
 
-func generateScriptTag(asset *Asset, id int) (*html.Node, error) {
+func generateScriptTag(asset *Asset, id int, modifier string) (*html.Node, error) {
 	if opts.ShacInput {
-		// <script src="@id@">
-		return &html.Node{
+		// <script src="@id@" attr>
+		tag := &html.Node{
 			Type:     html.ElementNode,
 			Data:     "script",
 			DataAtom: atom.Script,
@@ -650,7 +672,16 @@ func generateScriptTag(asset *Asset, id int) (*html.Node, error) {
 					Val: "@" + strconv.Itoa(id) + "@",
 				},
 			},
-		}, nil
+		}
+
+		if modifier != "" {
+			tag.Attr = append(tag.Attr, html.Attribute{
+				Key: modifier,
+				Val: "",
+			})
+		}
+
+		return tag, nil
 	} else {
 		// <script>contents</script>
 		fileContent, err := os.ReadFile(asset.SourcePath)
@@ -668,6 +699,13 @@ func generateScriptTag(asset *Asset, id int) (*html.Node, error) {
 			Type:     html.ElementNode,
 			Data:     "script",
 			DataAtom: atom.Script,
+		}
+
+		if modifier != "" {
+			tag.Attr = append(tag.Attr, html.Attribute{
+				Key: modifier,
+				Val: "",
+			})
 		}
 
 		tag.AppendChild(contentNode)
