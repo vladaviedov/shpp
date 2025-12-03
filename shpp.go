@@ -54,6 +54,7 @@ const (
 	dIgnore
 	dInclude
 	dPandoc
+	dRun
 	dManage
 )
 
@@ -86,6 +87,7 @@ var directiveDict = map[string]DirectiveDescription{
 	"@ignore":  {Kind: dIgnore, RequiredArgs: 0, OptionalArgs: 0},
 	"@include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
 	"@pandoc":  {Kind: dPandoc, RequiredArgs: 1, OptionalArgs: 1},
+	"@run":     {Kind: dRun, RequiredArgs: 1, OptionalArgs: 0},
 	"@manage":  {Kind: dManage, RequiredArgs: 0, OptionalArgs: 1},
 }
 
@@ -323,7 +325,7 @@ func readPreamble(reader *bufio.Reader, state *State) (bool, error) {
 			case "":
 				asset = createAsset(aScript, state.FileDir, dr.Args[0])
 			default:
-				return false, errors.New("syntax error: unknown @script modifier")
+				return false, errors.New("syntax error: unknown @script modifier\n")
 			}
 
 			state.Assets = append(state.Assets, asset)
@@ -368,6 +370,14 @@ func parseDirective(input string) (*Directive, error) {
 	if !valid {
 		msg := fmt.Sprintf("syntax error: invalid directive '%s'\n", parts[0])
 		return nil, errors.New(msg)
+	}
+
+	// Run is special and doesn't need parsing
+	if info.Kind == dRun {
+		return &Directive{
+			Kind: dRun,
+			Args: []string{strings.Join(parts[1:], " ")},
+		}, nil
 	}
 
 	minArgs := info.RequiredArgs
@@ -455,6 +465,23 @@ func processNode(node *html.Node, state *State) error {
 				}
 				node.Parent.InsertBefore(marker, node)
 			}
+		case dRun:
+			if !opts.ShellEscape {
+				fmt.Fprintf(os.Stderr, "warning: @run ignored (--shell-escape not enabled)\n")
+				break
+			}
+
+			// Run pandoc logic
+			stdoutData, err := runSystemCommand(dr.Args[0])
+			if err != nil {
+				return err
+			}
+
+			textNode := &html.Node{
+				Type: html.TextNode,
+				Data: stdoutData,
+			}
+			node.Parent.InsertBefore(textNode, node)
 		case dInclude:
 			absPath := convertPath(dr.Args[0], state.FileDir)
 			file, err := os.Open(absPath)
@@ -785,4 +812,15 @@ func pandocConvert(inputPath string, inputFormat string) (*os.File, error) {
 	}
 
 	return pandocOutput, nil
+}
+
+func runSystemCommand(command string) (string, error) {
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("failed to run command: %s\n", err.Error()))
+	}
+
+	return string(out), nil
 }
