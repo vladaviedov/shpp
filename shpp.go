@@ -70,6 +70,7 @@ type Asset struct {
 type Directive struct {
 	Kind DirectiveKind
 	Args []string
+	Num  uint64
 }
 
 type State struct {
@@ -391,10 +392,20 @@ func parseDirective(input string) (*Directive, error) {
 		}, nil
 	}
 
-	// TODO: parse arg directive
-
 	parts := strings.Split(trimmed, " ")
-	info, valid := directiveDict[parts[0]]
+	identifier := parts[0]
+
+	// Check for argument directive
+	argParse, err := strconv.ParseUint(identifier[1:], 10, 64)
+	if err == nil {
+		return &Directive{
+			Kind: dArg,
+			Num:  argParse,
+		}, nil
+	}
+
+	// Normal directive parsing
+	info, valid := directiveDict[identifier]
 
 	// TODO: would be nice to give line information
 	if !valid {
@@ -453,6 +464,18 @@ func processNode(node *html.Node, state *State) error {
 		}
 
 		switch dr.Kind {
+		case dArg:
+			// Check if arg is available
+			if dr.Num >= state.ArgCount {
+				return errors.New(fmt.Sprintf("out of range argument directive found\n"))
+			}
+
+			// Populate from arg list
+			textNode := &html.Node{
+				Type: html.TextNode,
+				Data: state.ArgData[dr.Num],
+			}
+			node.Parent.InsertBefore(textNode, node)
 		case dPandoc:
 			absPath := convertPath(dr.Args[0], state.FileDir)
 			inputFormat := ""
@@ -564,7 +587,49 @@ func processNode(node *html.Node, state *State) error {
 			// Save combined asset list
 			state.Assets = childState.Assets
 		case dDerive:
-			// TODO: implement
+			absPath := convertPath(dr.Args[0], state.FileDir)
+			file, err := os.Open(absPath)
+			if err != nil {
+				return errors.New(fmt.Sprintf("failed to open source file: %s\n", absPath))
+			}
+			defer file.Close()
+
+			// Create new state
+			argList := dr.Args[1:]
+			childState := &State{
+				Assets:   state.Assets,
+				PageURL:  state.PageURL,
+				FileDir:  path.Dir(absPath),
+				ArgCount: uint64(len(argList)),
+				ArgData:  argList,
+			}
+
+			// Add inclusion marker
+			if opts.Marker {
+				marker := &html.Node{
+					Type: html.CommentNode,
+					Data: fmt.Sprintf("START %s", dr.Args[0]),
+				}
+				node.Parent.InsertBefore(marker, node)
+			}
+
+			// Include
+			err = includeFile(file, childState, node, unusedText)
+			if err != nil {
+				return err
+			}
+
+			// Add inclusion marker
+			if opts.Marker {
+				marker := &html.Node{
+					Type: html.CommentNode,
+					Data: fmt.Sprintf("END %s", dr.Args[0]),
+				}
+				node.Parent.InsertBefore(marker, node)
+			}
+
+			// Save combined asset list
+			state.Assets = childState.Assets
 		case dManage:
 			if !opts.ShacInput {
 				fmt.Fprintf(os.Stderr, "warning: @manage ignored (--shac not enabled)\n")
