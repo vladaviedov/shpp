@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0
+- New directives
+    - `@run`
+    - `@template`
+    - `@derive`
+- Support script loading modifiers (`async` and `defer`)
+- Show errors in included files
+- Fix stdin input not working
+- Fix pandoc option parsing
+
 ## 0.6.0
 - New directives
     - `@ignore`

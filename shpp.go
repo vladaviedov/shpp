@@ -101,7 +101,7 @@ var directiveDict = map[string]DirectiveDescription{
 }
 
 // Populated by build system
-var Version string = "0.6.0"
+var Version string = "0.7.0"
 
 func main() {
 	parser := flags.NewParser(&opts, flags.Default^flags.HelpFlag^flags.PrintErrors)

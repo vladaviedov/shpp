@@ -1,7 +1,7 @@
 # This PKGBUILD is not published to the AUR
 # Maintainer: Vladyslav Aviedov <vladaviedov at protonmail dot com>
 pkgname=shpp-git
-pkgver=r54.d4639f0
+pkgver=r67.0b0e3b0
 pkgrel=1
 pkgdesc="Static HTML Pre-Processor (dev)"
 arch=('x86_64')
