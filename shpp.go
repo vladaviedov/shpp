@@ -489,7 +489,10 @@ func processNode(node *html.Node, state *State) error {
 				node.Parent.InsertBefore(marker, node)
 			}
 
-			includeFile(pandocOut, childState, node, unusedText)
+			err = includeFile(pandocOut, childState, node, unusedText)
+			if err != nil {
+				return err
+			}
 
 			// Add inclusion marker
 			if opts.Marker {
@@ -544,7 +547,10 @@ func processNode(node *html.Node, state *State) error {
 			}
 
 			// Include
-			includeFile(file, childState, node, unusedText)
+			err = includeFile(file, childState, node, unusedText)
+			if err != nil {
+				return err
+			}
 
 			// Add inclusion marker
 			if opts.Marker {
