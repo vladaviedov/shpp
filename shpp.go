@@ -472,6 +472,13 @@ func processNode(node *html.Node, state *State) error {
 			}
 			defer os.Remove(pandocOut.Name())
 
+			// Create new state
+			childState := &State{
+				Assets:  state.Assets,
+				PageURL: state.PageURL,
+				FileDir: path.Dir(absPath),
+			}
+
 			// Include as normal html
 			// Add inclusion marker
 			if opts.Marker {
@@ -482,10 +489,7 @@ func processNode(node *html.Node, state *State) error {
 				node.Parent.InsertBefore(marker, node)
 			}
 
-			oldDir := state.FileDir
-			state.FileDir = path.Dir(absPath)
-			includeFile(pandocOut, state, node, unusedText)
-			state.FileDir = oldDir
+			includeFile(pandocOut, childState, node, unusedText)
 
 			// Add inclusion marker
 			if opts.Marker {
@@ -495,6 +499,9 @@ func processNode(node *html.Node, state *State) error {
 				}
 				node.Parent.InsertBefore(marker, node)
 			}
+
+			// Save combined asset list
+			state.Assets = childState.Assets
 		case dRun:
 			if !opts.ShellEscape {
 				fmt.Fprintf(os.Stderr, "warning: @run ignored (--shell-escape not enabled)\n")
@@ -520,6 +527,13 @@ func processNode(node *html.Node, state *State) error {
 			}
 			defer file.Close()
 
+			// Create new state
+			childState := &State{
+				Assets:  state.Assets,
+				PageURL: state.PageURL,
+				FileDir: path.Dir(absPath),
+			}
+
 			// Add inclusion marker
 			if opts.Marker {
 				marker := &html.Node{
@@ -529,10 +543,8 @@ func processNode(node *html.Node, state *State) error {
 				node.Parent.InsertBefore(marker, node)
 			}
 
-			oldDir := state.FileDir
-			state.FileDir = path.Dir(absPath)
-			includeFile(file, state, node, unusedText)
-			state.FileDir = oldDir
+			// Include
+			includeFile(file, childState, node, unusedText)
 
 			// Add inclusion marker
 			if opts.Marker {
@@ -542,6 +554,9 @@ func processNode(node *html.Node, state *State) error {
 				}
 				node.Parent.InsertBefore(marker, node)
 			}
+
+			// Save combined asset list
+			state.Assets = childState.Assets
 		case dDerive:
 			// TODO: implement
 		case dManage:
