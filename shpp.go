@@ -48,6 +48,7 @@ type DirectiveKind uint64
 const (
 	dNop DirectiveKind = iota
 	dHtml
+	dArg
 	dStyle
 	dScript
 	dUrl
@@ -56,6 +57,9 @@ const (
 	dPandoc
 	dRun
 	dManage
+	dDefine
+	dTemplate
+	dDerive
 )
 
 type Asset struct {
@@ -69,9 +73,11 @@ type Directive struct {
 }
 
 type State struct {
-	Assets  []Asset
-	PageURL string
-	FileDir string
+	Assets   []Asset
+	PageURL  string
+	FileDir  string
+	ArgCount uint64
+	ArgData  []string
 }
 
 type DirectiveDescription struct {
@@ -81,14 +87,16 @@ type DirectiveDescription struct {
 }
 
 var directiveDict = map[string]DirectiveDescription{
-	"@style":   {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
-	"@script":  {Kind: dScript, RequiredArgs: 1, OptionalArgs: 1},
-	"@url":     {Kind: dUrl, RequiredArgs: 1, OptionalArgs: 0},
-	"@ignore":  {Kind: dIgnore, RequiredArgs: 0, OptionalArgs: 0},
-	"@include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
-	"@pandoc":  {Kind: dPandoc, RequiredArgs: 1, OptionalArgs: 1},
-	"@run":     {Kind: dRun, RequiredArgs: 1, OptionalArgs: 0},
-	"@manage":  {Kind: dManage, RequiredArgs: 0, OptionalArgs: 1},
+	"@style":    {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
+	"@script":   {Kind: dScript, RequiredArgs: 1, OptionalArgs: 1},
+	"@url":      {Kind: dUrl, RequiredArgs: 1, OptionalArgs: 0},
+	"@ignore":   {Kind: dIgnore, RequiredArgs: 0, OptionalArgs: 0},
+	"@include":  {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
+	"@pandoc":   {Kind: dPandoc, RequiredArgs: 1, OptionalArgs: 1},
+	"@run":      {Kind: dRun, RequiredArgs: 1, OptionalArgs: 0},
+	"@manage":   {Kind: dManage, RequiredArgs: 0, OptionalArgs: 1},
+	"@template": {Kind: dTemplate, RequiredArgs: 1, OptionalArgs: 0},
+	"@derive":   {Kind: dDerive, RequiredArgs: 1, OptionalArgs: 256},
 }
 
 // Populated by build system
@@ -167,8 +175,10 @@ func main() {
 		defaultName, _ = strings.CutSuffix(inStream.Name(), ".shpp")
 	}
 	state := &State{
-		PageURL: defaultName + ".html",
-		FileDir: inWorkingDir,
+		PageURL:  defaultName + ".html",
+		FileDir:  inWorkingDir,
+		ArgCount: 0,
+		ArgData:  nil,
 	}
 
 	wrappedDocument, ignore, err := compile(inStream, state, nil)
@@ -278,6 +288,7 @@ func compile(file *os.File, state *State, htmlContext *html.Node) (*html.Node, b
 
 func readPreamble(reader *bufio.Reader, state *State) (bool, error) {
 	urlChanged := false
+	isTemplate := false
 
 	for {
 		nextChar, err := reader.Peek(1)
@@ -303,6 +314,8 @@ func readPreamble(reader *bufio.Reader, state *State) (bool, error) {
 		switch dr.Kind {
 		case dInclude:
 			return false, errors.New("syntax error: @include not allowed in preamble\n")
+		case dDerive:
+			return false, errors.New("syntax error: @derive not allowed in preamble\n")
 		case dPandoc:
 			return false, errors.New("syntax error: @pandoc not allowed in preamble\n")
 		case dManage:
@@ -336,6 +349,21 @@ func readPreamble(reader *bufio.Reader, state *State) (bool, error) {
 
 			state.PageURL = dr.Args[0]
 			urlChanged = true
+		case dTemplate:
+			// Check for repeat @template tags
+			if isTemplate {
+				return false, errors.New("syntax error: multiple @template directives found\n")
+			}
+			// Parse expected arg count
+			templateN, err := strconv.ParseUint(dr.Args[0], 10, 64)
+			if err != nil {
+				return false, errors.New("syntax error: @template argument must be an unsigned number\n")
+			}
+			// Just check that arg count matches
+			if state.ArgCount != templateN {
+				return false, errors.New("syntax erros: @template derived with incorrect argument count\n")
+			}
+			isTemplate = true
 		case dIgnore:
 			return true, nil
 		}
@@ -362,6 +390,8 @@ func parseDirective(input string) (*Directive, error) {
 			Args: nil,
 		}, nil
 	}
+
+	// TODO: parse arg directive
 
 	parts := strings.Split(trimmed, " ")
 	info, valid := directiveDict[parts[0]]
@@ -512,6 +542,8 @@ func processNode(node *html.Node, state *State) error {
 				}
 				node.Parent.InsertBefore(marker, node)
 			}
+		case dDerive:
+			// TODO: implement
 		case dManage:
 			if !opts.ShacInput {
 				fmt.Fprintf(os.Stderr, "warning: @manage ignored (--shac not enabled)\n")
