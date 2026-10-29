@@ -19,29 +19,32 @@ import (
 )
 
 func TestNewLexer_InvalidStream(t *testing.T) {
+	assert := assert.New(t)
 	errStr := "mock error"
 	reader := iotest.ErrReader(errors.New(errStr))
 
 	lexer, err := NewLexer(reader)
 
-	assert.Contains(t, err.Error(), errStr)
-	assert.Nil(t, lexer)
+	assert.Contains(err.Error(), errStr)
+	assert.Nil(lexer)
 }
 
 func TestNewLexer_EmptyFile(t *testing.T) {
+	assert := assert.New(t)
 	reader := strings.NewReader("")
 
 	lexer, err := NewLexer(reader)
 
-	assert.ErrorIs(t, err, io.EOF)
-	assert.Nil(t, lexer)
+	assert.ErrorIs(io.EOF, err)
+	assert.Nil(lexer)
 }
 
 func TestNewLexer_Success(t *testing.T) {
+	assert := assert.New(t)
 	reader := strings.NewReader("a")
 
 	lexer, err := NewLexer(reader)
 
-	assert.Nil(t, err)
-	assert.Equal(t, lexer.Head, byte('a'))
+	assert.Nil(err)
+	assert.Equal(byte('a'), lexer.Head)
 }
