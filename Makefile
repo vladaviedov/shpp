@@ -28,6 +28,10 @@ $(TARGET): $(BUILD)/bin shpp.go
 $(BUILD)/bin:
 	mkdir -p $@
 
+.PHONY: test
+test:
+	$(GO) test -v ./src
+
 .PHONY: install
 install: $(TARGET)
 	mkdir -p $(PREFIX)/bin

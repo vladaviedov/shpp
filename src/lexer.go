@@ -12,7 +12,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 )
 
@@ -55,8 +54,8 @@ type Lexer struct {
 	FlagEOF       bool
 }
 
-func NewLexer(file *os.File) (*Lexer, error) {
-	stream := bufio.NewReader(file)
+func NewLexer(source io.Reader) (*Lexer, error) {
+	stream := bufio.NewReader(source)
 	head, err := stream.ReadByte()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize lexer: %w", err)
