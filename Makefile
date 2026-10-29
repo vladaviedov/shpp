@@ -12,6 +12,11 @@ LDFLAGS_RELEASE=-s -w
 TARGET=$(BUILD)/bin/shpp
 PREFIX?=/usr
 
+SRCS=$(shell find src -type f -name '*.go')
+
+FORMAT=gofmt
+FORMAT_FLAGS=-w
+
 .PHONY: release
 release: GOFLAGS+=$(GOFLAGS_RELEASE)
 release: LDFLAGS+=$(LDFLAGS_RELEASE)
@@ -22,8 +27,8 @@ debug: GOFLAGS+=$(GOFLAGS_DEBUG)
 debug: LDFLAGS+=$(LDFLAGS_DEBUG)
 debug: $(TARGET)
 
-$(TARGET): $(BUILD)/bin shpp.go
-	$(GO) build -gcflags="$(GOFLAGS)" -ldflags="$(LDFLAGS)" -o $@
+$(TARGET): $(BUILD)/bin $(SRCS)
+	$(GO) build -gcflags="$(GOFLAGS)" -ldflags="$(LDFLAGS)" -o $@ ./src
 
 $(BUILD)/bin:
 	mkdir -p $@
@@ -43,4 +48,4 @@ clean:
 
 .PHONY: format
 format:
-	gofmt -w shpp.go
+	$(FORMAT) $(FORMAT_FLAGS) $(SRCS)
