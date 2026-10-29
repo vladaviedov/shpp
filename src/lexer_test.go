@@ -35,7 +35,7 @@ func TestNewLexer_EmptyFile(t *testing.T) {
 
 	lexer, err := NewLexer(reader)
 
-	assert.ErrorIs(io.EOF, err)
+	assert.ErrorIs(err, io.EOF)
 	assert.Nil(lexer)
 }
 
@@ -47,4 +47,22 @@ func TestNewLexer_Success(t *testing.T) {
 
 	assert.Nil(err)
 	assert.Equal(byte('a'), lexer.Head)
+}
+
+func TestNextToken_OnlyRaw(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader("<html><body></body></html>\n")
+
+	lexer, err := NewLexer(reader)
+	assert.Nil(err)
+
+	var expectedList = []Token{
+		{Kind: tPreambleEnd, Data: ""},
+		{Kind: tRaw, Data: "<html><body></body></html> "},
+		{Kind: tEOF, Data: ""},
+	}
+
+	for _, expect := range expectedList {
+		assert.Equal(expect, lexer.NextToken())
+	}
 }

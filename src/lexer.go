@@ -159,12 +159,6 @@ func (s *Lexer) NextToken() Token {
 					Kind: tDirectiveName,
 					Data: dir,
 				}
-			case '<':
-				// End preamble - do not consume char
-				if s.FlagPreamble {
-					s.FlagPreamble = false
-					return tokenPreambleEnd
-				}
 			case '\n':
 				fallthrough
 			case '\t':
@@ -172,6 +166,14 @@ func (s *Lexer) NextToken() Token {
 				if !s.FlagPreamble {
 					rawBuf.WriteByte(' ')
 				}
+			case '<':
+				// End preamble - do not consume char
+				if s.FlagPreamble {
+					s.FlagPreamble = false
+					return tokenPreambleEnd
+				}
+				// Otherwise treat as normal
+				fallthrough
 			default:
 				// Save to buffer
 				if !s.FlagPreamble {
