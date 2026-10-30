@@ -26,7 +26,14 @@ const (
 	tDirectiveName
 	tDirectiveArgument
 	tRaw
-	tIdentifier
+)
+
+type QuoteState uint64
+
+const (
+	qNone QuoteState = iota
+	qSingle
+	qDouble
 )
 
 type Token struct {
@@ -97,17 +104,6 @@ func (s *Lexer) NextToken() Token {
 				if !s.FlagPreamble {
 					rawBuf.WriteByte(s.Head)
 				}
-			case '{':
-				// Substitution
-				ident, err := s.parseIdentifier()
-				if err != nil {
-					return tokenError
-				}
-
-				return Token{
-					Kind: tIdentifier,
-					Data: ident,
-				}
 			case '\\':
 				// Check line continuation
 				if next == '\n' {
@@ -115,7 +111,7 @@ func (s *Lexer) NextToken() Token {
 				}
 			default:
 				// Parse argument
-				arg, err := s.parseWithinDirective()
+				arg, err := s.parseDirectiveArgument()
 				if err != nil {
 					return tokenError
 				}
@@ -140,7 +136,7 @@ func (s *Lexer) NextToken() Token {
 				s.FlagDirective = true
 
 				// Parse directive name
-				dir, err := s.parseWithinDirective()
+				dir, err := s.parseDirectiveName()
 				if err != nil {
 					return tokenError
 				}
@@ -197,9 +193,66 @@ func (s *Lexer) NextToken() Token {
 	}
 }
 
-func (s *Lexer) parseWithinDirective() (string, error) {
+func (s *Lexer) parseDirectiveName() (string, error) {
 	// TODO: implement
 	return "", nil
+}
+
+func (s *Lexer) parseDirectiveArgument() (string, error) {
+	var parsed strings.Builder
+
+	err := s.advanceHead()
+	if err != nil {
+		return "", err
+	}
+
+	state := qNone
+	for {
+		switch (s.Head) {
+		case '"':
+			switch (state) {
+			case qNone:
+				state = qDouble
+			case qSingle:
+				parsed.WriteByte(s.Head)
+			case qDouble:
+				state = qNone
+			}
+		case '\'':
+			switch (state) {
+			case qNone:
+				state = qSingle
+			case qSingle:
+				state = qNone
+			case qDouble:
+				parsed.WriteByte(s.Head)
+			}
+		case '{':
+			if state == qNone {
+				ident, err := s.parseIdentifier()
+				if err != nil {
+					return "", nil
+				}
+
+				parsed.WriteString(ident)
+			} else {
+				parsed.WriteByte(s.Head)
+			}
+		case ' ':
+			fallthrough
+		case '\t':
+			fallthrough
+		case '\n':
+			return parsed.String(), nil
+		case '\\':
+			parsed.WriteByte(s.Head)
+			err := s.advanceHead()
+			if err != nil {
+				return "", err
+			}
+			parsed.WriteByte(s.Head)
+		}
+	}
 }
 
 func (s *Lexer) parseIdentifier() (string, error) {
