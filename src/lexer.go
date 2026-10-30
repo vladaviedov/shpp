@@ -53,7 +53,7 @@ type Lexer struct {
 	Stream *bufio.Reader
 
 	// Current character
-	Head byte
+	Head rune
 
 	// State flags
 	FlagPreamble  bool
@@ -63,7 +63,7 @@ type Lexer struct {
 
 func NewLexer(source io.Reader) (*Lexer, error) {
 	stream := bufio.NewReader(source)
-	head, err := stream.ReadByte()
+	head, _, err := stream.ReadRune()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize lexer: %w", err)
 	}
@@ -102,7 +102,7 @@ func (s *Lexer) NextToken() Token {
 				// Exit directive mode
 				s.FlagDirective = false
 				if !s.FlagPreamble {
-					rawBuf.WriteByte(s.Head)
+					rawBuf.WriteRune(s.Head)
 				}
 			case '\\':
 				// Check line continuation
@@ -165,7 +165,7 @@ func (s *Lexer) NextToken() Token {
 			default:
 				// Save to buffer
 				if !s.FlagPreamble {
-					rawBuf.WriteByte(s.Head)
+					rawBuf.WriteRune(s.Head)
 				}
 			}
 		}
@@ -214,7 +214,7 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 			case qNone:
 				state = qDouble
 			case qSingle:
-				parsed.WriteByte(s.Head)
+				parsed.WriteRune(s.Head)
 			case qDouble:
 				state = qNone
 			}
@@ -225,7 +225,7 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 			case qSingle:
 				state = qNone
 			case qDouble:
-				parsed.WriteByte(s.Head)
+				parsed.WriteRune(s.Head)
 			}
 		case '{':
 			if state == qNone {
@@ -236,7 +236,7 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 
 				parsed.WriteString(ident)
 			} else {
-				parsed.WriteByte(s.Head)
+				parsed.WriteRune(s.Head)
 			}
 		case ' ':
 			fallthrough
@@ -245,12 +245,12 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 		case '\n':
 			return parsed.String(), nil
 		case '\\':
-			parsed.WriteByte(s.Head)
+			parsed.WriteRune(s.Head)
 			err := s.advanceHead()
 			if err != nil {
 				return "", err
 			}
-			parsed.WriteByte(s.Head)
+			parsed.WriteRune(s.Head)
 		}
 	}
 }
@@ -261,7 +261,7 @@ func (s *Lexer) parseIdentifier() (string, error) {
 }
 
 func (s *Lexer) advanceHead() error {
-	val, err := s.Stream.ReadByte()
+	val, _, err := s.Stream.ReadRune()
 	if err != nil {
 		return err
 	}

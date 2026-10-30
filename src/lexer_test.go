@@ -46,7 +46,7 @@ func TestNewLexer_Success(t *testing.T) {
 	lexer, err := NewLexer(reader)
 
 	assert.Nil(err)
-	assert.Equal(byte('a'), lexer.Head)
+	assert.Equal(rune('a'), lexer.Head)
 }
 
 const onlyRaw = `<html>
