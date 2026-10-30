@@ -94,6 +94,9 @@ func (s *Lexer) NextToken() Token {
 			case '\n':
 				// Exit directive mode
 				s.FlagDirective = false
+				if !s.FlagPreamble {
+					rawBuf.WriteByte(s.Head)
+				}
 			case '{':
 				// Substitution
 				ident, err := s.parseIdentifier()
@@ -110,10 +113,6 @@ func (s *Lexer) NextToken() Token {
 				if next == '\n' {
 					s.Stream.Discard(1)
 				}
-			case ' ':
-				// Ignore whitespace
-			case '\t':
-				// Ignore whitespace
 			default:
 				// Parse argument
 				arg, err := s.parseWithinDirective()
@@ -158,13 +157,6 @@ func (s *Lexer) NextToken() Token {
 				return Token{
 					Kind: tDirectiveName,
 					Data: dir,
-				}
-			case '\n':
-				fallthrough
-			case '\t':
-				// Collapse into whitespace
-				if !s.FlagPreamble {
-					rawBuf.WriteByte(' ')
 				}
 			case '<':
 				// End preamble - do not consume char
