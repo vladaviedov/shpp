@@ -201,20 +201,18 @@ func (s *Lexer) NextToken() (Token, error) {
 func (s *Lexer) parseDirectiveName() (string, error) {
 	var parsed strings.Builder
 
+	// Advance head at the start
+	err := s.advanceHead()
+	if err != nil {
+		return "", err
+	}
+
 	for s.Head != ' ' && s.Head != '\t' && s.Head != '\n' {
 		if !unicode.IsLetter(s.Head) {
-			return "", fmt.Errorf("failed to lex identifier: invalid character %q", s.Head)
+			return "", fmt.Errorf("failed to lex directive: invalid character %q", s.Head)
 		}
 		parsed.WriteRune(s.Head)
 
-		err := s.advanceHead()
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Don't advance if newline is reached
-	if s.Head != '\n' {
 		err := s.advanceHead()
 		if err != nil {
 			return "", err
@@ -227,6 +225,7 @@ func (s *Lexer) parseDirectiveName() (string, error) {
 func (s *Lexer) parseDirectiveArgument() (string, error) {
 	var parsed strings.Builder
 
+	// Advance head at the start
 	err := s.advanceHead()
 	if err != nil {
 		return "", err
@@ -302,7 +301,13 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 				parsed.WriteRune('\\')
 				parsed.WriteRune(s.Head)
 			}
+		default:
+			parsed.WriteRune(s.Head)
+		}
 
+		err := s.advanceHead()
+		if err != nil {
+			return "", err
 		}
 	}
 }
@@ -310,6 +315,12 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 func (s *Lexer) parseIdentifier() (string, error) {
 	var parsed strings.Builder
 	numberIdent := false
+
+	// Advance head at the start
+	err := s.advanceHead()
+	if err != nil {
+		return "", err
+	}
 
 	for s.Head != '}' {
 		if unicode.IsNumber(s.Head) {
@@ -331,7 +342,7 @@ func (s *Lexer) parseIdentifier() (string, error) {
 		}
 	}
 
-	err := s.advanceHead()
+	err = s.advanceHead()
 	if err != nil {
 		return "", err
 	}
