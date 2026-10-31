@@ -68,7 +68,9 @@ func TestNextToken_OnlyRaw(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		assert.Equal(expect, lexer.NextToken())
+		token, err := lexer.NextToken()
+		assert.Nil(err)
+		assert.Equal(expect, token)
 	}
 }
 
@@ -99,7 +101,9 @@ func TestNextToken_PreambleDirectives(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		assert.Equal(expect, lexer.NextToken())
+		token, err := lexer.NextToken()
+		assert.Nil(err)
+		assert.Equal(expect, token)
 	}
 }
 
@@ -131,7 +135,9 @@ func TestNextToken_BodyDirectives(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		assert.Equal(expect, lexer.NextToken())
+		token, err := lexer.NextToken()
+		assert.Nil(err)
+		assert.Equal(expect, token)
 	}
 }
 
@@ -159,7 +165,9 @@ func TestNextToken_MultiArgumentDirective(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		assert.Equal(expect, lexer.NextToken())
+		token, err := lexer.NextToken()
+		assert.Nil(err)
+		assert.Equal(expect, token)
 	}
 }
 
@@ -179,7 +187,9 @@ func TestNextToken_NoBody(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		assert.Equal(expect, lexer.NextToken())
+		token, err := lexer.NextToken()
+		assert.Nil(err)
+		assert.Equal(expect, token)
 	}
 }
 
@@ -217,6 +227,8 @@ func TestNextToken_ClosedDirectives(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		assert.Equal(expect, lexer.NextToken())
+		token, err := lexer.NextToken()
+		assert.Nil(err)
+		assert.Equal(expect, token)
 	}
 }

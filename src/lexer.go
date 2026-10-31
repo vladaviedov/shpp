@@ -10,6 +10,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -49,6 +50,8 @@ var (
 	tokenEscape      = Token{Kind: tRaw, Data: "@"}
 )
 
+var advanceEOF = fmt.Errorf("failed to read stream: %s", io.EOF)
+
 type Lexer struct {
 	Stream *bufio.Reader
 
@@ -79,9 +82,9 @@ func NewLexer(source io.Reader) (*Lexer, error) {
 	return s, nil
 }
 
-func (s *Lexer) NextToken() Token {
+func (s *Lexer) NextToken() (Token, error) {
 	if s.FlagEOF {
-		return tokenEOF
+		return tokenEOF, nil
 	}
 
 	var rawBuf strings.Builder
@@ -91,7 +94,7 @@ func (s *Lexer) NextToken() Token {
 			// Prepare lookahead
 			nextRes, err := s.Stream.Peek(1)
 			if err != nil {
-				return tokenError
+				return tokenError, fmt.Errorf("failed to read stream: %w", err)
 			}
 			next := nextRes[0]
 
@@ -113,13 +116,13 @@ func (s *Lexer) NextToken() Token {
 				// Parse argument
 				arg, err := s.parseDirectiveArgument()
 				if err != nil {
-					return tokenError
+					return tokenError, err
 				}
 
 				return Token{
 					Kind: tDirectiveArgument,
 					Data: arg,
-				}
+				}, nil
 			}
 		} else {
 			switch s.Head {
@@ -129,7 +132,7 @@ func (s *Lexer) NextToken() Token {
 					return Token{
 						Kind: tRaw,
 						Data: rawBuf.String(),
-					}
+					}, nil
 				}
 
 				// Enter directive mode
@@ -138,27 +141,28 @@ func (s *Lexer) NextToken() Token {
 				// Parse directive name
 				dir, err := s.parseDirectiveName()
 				if err != nil {
-					return tokenError
+					return tokenError, err
 				}
 
 				// Null directive - escaped @
 				if dir == "" {
-					if s.advanceHead() != nil {
-						return tokenError
+					err = s.advanceHead()
+					if err != nil {
+						return tokenError, err
 					}
-					return tokenEscape
+					return tokenEscape, nil
 				}
 
 				// Regular directive name
 				return Token{
 					Kind: tDirectiveName,
 					Data: dir,
-				}
+				}, nil
 			case '<':
 				// End preamble - do not consume char
 				if s.FlagPreamble {
 					s.FlagPreamble = false
-					return tokenPreambleEnd
+					return tokenPreambleEnd, nil
 				}
 				// Otherwise treat as normal
 				fallthrough
@@ -174,7 +178,7 @@ func (s *Lexer) NextToken() Token {
 		err := s.advanceHead()
 		if err != nil {
 			// Note: EOF is allowed in raw mode (outside preamble)
-			if !s.FlagPreamble && !s.FlagDirective && err == io.EOF {
+			if !s.FlagPreamble && !s.FlagDirective && err.Error() == advanceEOF.Error() {
 				s.FlagEOF = true
 
 				// Need to flush buffer before actual EOF
@@ -182,13 +186,13 @@ func (s *Lexer) NextToken() Token {
 					return Token{
 						Kind: tRaw,
 						Data: rawBuf.String(),
-					}
+					}, nil
 				}
 
-				return tokenEOF
+				return tokenEOF, nil
 			}
 
-			return tokenError
+			return tokenError, err
 		}
 	}
 }
@@ -263,7 +267,7 @@ func (s *Lexer) parseIdentifier() (string, error) {
 func (s *Lexer) advanceHead() error {
 	val, _, err := s.Stream.ReadRune()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read stream: %w", err)
 	}
 
 	s.Head = val
