@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 )
 
 type TokenKind uint64
@@ -198,8 +199,29 @@ func (s *Lexer) NextToken() (Token, error) {
 }
 
 func (s *Lexer) parseDirectiveName() (string, error) {
-	// TODO: implement
-	return "", nil
+	var parsed strings.Builder
+
+	for s.Head != ' ' && s.Head != '\t' && s.Head != '\n' {
+		if !unicode.IsLetter(s.Head) {
+			return "", fmt.Errorf("failed to lex identifier: invalid character %q", s.Head)
+		}
+		parsed.WriteRune(s.Head)
+
+		err := s.advanceHead()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// Don't advance if newline is reached
+	if s.Head != '\n' {
+		err := s.advanceHead()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return parsed.String(), nil
 }
 
 func (s *Lexer) parseDirectiveArgument() (string, error) {
@@ -212,9 +234,9 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 
 	state := qNone
 	for {
-		switch (s.Head) {
+		switch s.Head {
 		case '"':
-			switch (state) {
+			switch state {
 			case qNone:
 				state = qDouble
 			case qSingle:
@@ -223,7 +245,7 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 				state = qNone
 			}
 		case '\'':
-			switch (state) {
+			switch state {
 			case qNone:
 				state = qSingle
 			case qSingle:
@@ -245,23 +267,76 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 		case ' ':
 			fallthrough
 		case '\t':
+			if state != qNone {
+				parsed.WriteRune(s.Head)
+				break
+			}
+
 			fallthrough
 		case '\n':
 			return parsed.String(), nil
 		case '\\':
-			parsed.WriteRune(s.Head)
 			err := s.advanceHead()
 			if err != nil {
-				return "", err
+				return "", nil
 			}
-			parsed.WriteRune(s.Head)
+
+			switch s.Head {
+			case '"':
+				if state == qDouble {
+					parsed.WriteRune(s.Head)
+				}
+			case '\'':
+				if state == qSingle {
+					parsed.WriteRune(s.Head)
+				}
+			case '\\':
+				parsed.WriteRune(s.Head)
+			case ' ':
+				fallthrough
+			case '\t':
+				fallthrough
+			case '\n':
+				return "", errors.New("failed to lex argument: cannot escape whitespace")
+			default:
+				parsed.WriteRune('\\')
+				parsed.WriteRune(s.Head)
+			}
+
 		}
 	}
 }
 
 func (s *Lexer) parseIdentifier() (string, error) {
-	// TODO: implement
-	return "", nil
+	var parsed strings.Builder
+	numberIdent := false
+
+	for s.Head != '}' {
+		if unicode.IsNumber(s.Head) {
+			if numberIdent {
+				parsed.WriteRune(s.Head)
+			} else if parsed.Len() == 0 {
+				parsed.WriteRune(s.Head)
+				numberIdent = true
+			}
+		} else if unicode.IsLetter(s.Head) {
+			parsed.WriteRune(s.Head)
+		} else {
+			return "", fmt.Errorf("failed to lex identifier: invalid character %q", s.Head)
+		}
+
+		err := s.advanceHead()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	err := s.advanceHead()
+	if err != nil {
+		return "", err
+	}
+
+	return parsed.String(), nil
 }
 
 func (s *Lexer) advanceHead() error {
