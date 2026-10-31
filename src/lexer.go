@@ -101,7 +101,8 @@ func (s *Lexer) NextToken() (Token, error) {
 
 			switch s.Head {
 			case '@':
-				fallthrough
+				// Exit directive mode
+				s.FlagDirective = false
 			case '\n':
 				// Exit directive mode
 				s.FlagDirective = false
@@ -263,6 +264,8 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 			} else {
 				parsed.WriteRune(s.Head)
 			}
+		case '@':
+			fallthrough
 		case ' ':
 			fallthrough
 		case '\t':
@@ -282,11 +285,11 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 
 			switch s.Head {
 			case '"':
-				if state == qDouble {
+				if state != qSingle {
 					parsed.WriteRune(s.Head)
 				}
 			case '\'':
-				if state == qSingle {
+				if state != qDouble {
 					parsed.WriteRune(s.Head)
 				}
 			case '\\':

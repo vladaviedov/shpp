@@ -217,7 +217,7 @@ func TestNextToken_NoBody(t *testing.T) {
 const closedDirectives = `<html>
 	<body>
 		Today is @run date +\"%Y-%m-%d\"@ and the time is
-		@run date +"%H:%M:%S"@ in @run date +"%Z"@ timezone.
+		@run date +\"%H:%M:%S\"@ in @run date +\"%Z\"@ timezone.
 	</body>
 </html>
 `
