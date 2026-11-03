@@ -26,13 +26,13 @@ type State struct {
 	Ignored    bool
 }
 
-func ProcessFile(inStream io.Reader, outStream io.Writer, defaultName string, workingDir string) error {
+func processFile(inStream io.Reader, outStream io.Writer, defaultName string, workingDir string) error {
 	state := &State{
 		PageURL:  defaultName + ".html",
 		FileDir:  workingDir,
 		ArgCount: 0,
 		ArgData:  nil,
-		Emitter:  NewEmitter(outStream),
+		Emitter:  newEmitter(outStream),
 	}
 
 	err := processFileIM(inStream, state)
@@ -44,7 +44,7 @@ func ProcessFile(inStream io.Reader, outStream io.Writer, defaultName string, wo
 }
 
 func processFileIM(stream io.Reader, state *State) error {
-	lexer, err := NewLexer(stream)
+	lexer, err := newLexer(stream)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func processFileIM(stream io.Reader, state *State) error {
 }
 
 func processPreamble(lexer *Lexer, state *State) error {
-	token, err := lexer.NextToken()
+	token, err := lexer.nextToken()
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 			return nil
 		}
 
-		token, err = lexer.NextToken()
+		token, err = lexer.nextToken()
 		if err != nil {
 			return err
 		}
@@ -105,7 +105,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 }
 
 func processBody(lexer *Lexer, state *State) error {
-	token, err := lexer.NextToken()
+	token, err := lexer.nextToken()
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func processBody(lexer *Lexer, state *State) error {
 		case tDirectiveArgument:
 			tokenList = append(tokenList, token)
 		case tRaw:
-			state.Emitter.WriteIM(token.Data)
+			state.Emitter.writeIM(token.Data)
 		case tEOF:
 			if len(tokenList) != 0 {
 				err = evaluateDirective(tokenList, state, false)
@@ -136,7 +136,7 @@ func processBody(lexer *Lexer, state *State) error {
 			return nil
 		}
 
-		token, err = lexer.NextToken()
+		token, err = lexer.nextToken()
 		if err != nil {
 			return err
 		}

@@ -65,7 +65,7 @@ type Lexer struct {
 	FlagEOF       bool
 }
 
-func NewLexer(source io.Reader) (*Lexer, error) {
+func newLexer(source io.Reader) (*Lexer, error) {
 	stream := bufio.NewReader(source)
 	head, _, err := stream.ReadRune()
 	if err != nil {
@@ -83,7 +83,7 @@ func NewLexer(source io.Reader) (*Lexer, error) {
 	return s, nil
 }
 
-func (s *Lexer) NextToken() (Token, error) {
+func (s *Lexer) nextToken() (Token, error) {
 	if s.FlagEOF {
 		return tokenEOF, nil
 	}

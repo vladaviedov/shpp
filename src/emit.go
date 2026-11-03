@@ -21,13 +21,13 @@ type Emitter struct {
 	OutputStream io.Writer
 }
 
-func NewEmitter(stream io.Writer) *Emitter {
+func newEmitter(stream io.Writer) *Emitter {
 	return &Emitter{
 		OutputStream: stream,
 	}
 }
 
-func (e *Emitter) WriteIM(data string) error {
+func (e *Emitter) writeIM(data string) error {
 	if e.SpillFile != nil {
 		_, err := e.SpillFile.WriteString(data)
 		return err
@@ -62,7 +62,7 @@ func (e *Emitter) WriteIM(data string) error {
 	return nil
 }
 
-func (e *Emitter) GetIMReader() io.Reader {
+func (e *Emitter) getIMReader() io.Reader {
 	if e.SpillFile != nil {
 		return e.SpillFile
 	}
@@ -70,17 +70,17 @@ func (e *Emitter) GetIMReader() io.Reader {
 	return &e.InMemBuffer
 }
 
-func (e *Emitter) WriteOut(data string) error {
+func (e *Emitter) writeOut(data string) error {
 	_, err := e.OutputStream.Write([]byte(data))
 	return err
 }
 
-func (e *Emitter) FlushIM() error {
-	_, err := io.Copy(e.OutputStream, e.GetIMReader())
+func (e *Emitter) flushIM() error {
+	_, err := io.Copy(e.OutputStream, e.getIMReader())
 	return err
 }
 
-func (e *Emitter) Destroy() {
+func (e *Emitter) destroy() {
 	if e.SpillFile == nil {
 		return
 	}

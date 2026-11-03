@@ -194,7 +194,7 @@ func evalInPreamble(directive *Directive, state *State) error {
 func evalInBody(directive *Directive, state *State) error {
 	switch directive.Kind {
 	case dNop:
-		state.Emitter.WriteIM("<!-- NOP -->")
+		state.Emitter.writeIM("<!-- NOP -->")
 	case dInclude:
 		fallthrough
 	case dDerive:
@@ -217,7 +217,7 @@ func evalInBody(directive *Directive, state *State) error {
 }
 
 func includeCommon(filepath string, state *State, withArgs []string) error {
-	absPath := ConvertPath(filepath, state.FileDir)
+	absPath := convertPath(filepath, state.FileDir)
 	file, err := os.Open(absPath)
 	if err != nil {
 		return fmt.Errorf("failed to open source file: %w", err)
@@ -236,7 +236,7 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 	// Add inclusion marker
 	if opts.Marker {
 		marker := fmt.Sprintf("<!-- START %s -->", filepath)
-		state.Emitter.WriteIM(marker)
+		state.Emitter.writeIM(marker)
 	}
 
 	// Process file
@@ -248,7 +248,7 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 	// Add inclusion marker
 	if opts.Marker {
 		marker := fmt.Sprintf("<!-- END %s -->", filepath)
-		state.Emitter.WriteIM(marker)
+		state.Emitter.writeIM(marker)
 	}
 
 	// Copy assets from child
@@ -257,7 +257,7 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 }
 
 func includePandoc(filepath string, modifier string, state *State) error {
-	absPath := ConvertPath(filepath, state.FileDir)
+	absPath := convertPath(filepath, state.FileDir)
 	inputFormat := modifier
 
 	if !opts.ShellEscape {
@@ -266,7 +266,7 @@ func includePandoc(filepath string, modifier string, state *State) error {
 	}
 
 	// Run pandoc logic
-	pandocOut, err := PandocConvert(absPath, inputFormat)
+	pandocOut, err := pandocConvert(absPath, inputFormat)
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func includePandoc(filepath string, modifier string, state *State) error {
 	// Add inclusion marker
 	if opts.Marker {
 		marker := fmt.Sprintf("<!-- START %s -->", filepath)
-		state.Emitter.WriteIM(marker)
+		state.Emitter.writeIM(marker)
 	}
 
 	// Process file
@@ -294,7 +294,7 @@ func includePandoc(filepath string, modifier string, state *State) error {
 	// Add inclusion marker
 	if opts.Marker {
 		marker := fmt.Sprintf("<!-- END %s -->", filepath)
-		state.Emitter.WriteIM(marker)
+		state.Emitter.writeIM(marker)
 	}
 
 	// Copy assets from child

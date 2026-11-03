@@ -23,7 +23,7 @@ func TestNewLexer_InvalidStream(t *testing.T) {
 	errStr := "mock error"
 	reader := iotest.ErrReader(errors.New(errStr))
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 
 	assert.Contains(err.Error(), errStr)
 	assert.Nil(lexer)
@@ -33,7 +33,7 @@ func TestNewLexer_EmptyFile(t *testing.T) {
 	assert := assert.New(t)
 	reader := strings.NewReader("")
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 
 	assert.ErrorIs(err, io.EOF)
 	assert.Nil(lexer)
@@ -43,7 +43,7 @@ func TestNewLexer_Success(t *testing.T) {
 	assert := assert.New(t)
 	reader := strings.NewReader("a")
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 
 	assert.Nil(err)
 	assert.Equal(rune('a'), lexer.Head)
@@ -58,7 +58,7 @@ func TestNextToken_OnlyRaw(t *testing.T) {
 	assert := assert.New(t)
 	reader := strings.NewReader(onlyRaw)
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 	assert.Nil(err)
 
 	var expectedList = []Token{
@@ -68,7 +68,7 @@ func TestNextToken_OnlyRaw(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		token, err := lexer.NextToken()
+		token, err := lexer.nextToken()
 		if expect.Kind == tError {
 			assert.NotNil(err)
 		} else {
@@ -90,7 +90,7 @@ func TestNextToken_PreambleDirectives(t *testing.T) {
 	assert := assert.New(t)
 	reader := strings.NewReader(preambleDirectives)
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 	assert.Nil(err)
 
 	var expectedList = []Token{
@@ -105,7 +105,7 @@ func TestNextToken_PreambleDirectives(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		token, err := lexer.NextToken()
+		token, err := lexer.nextToken()
 		if expect.Kind == tError {
 			assert.NotNil(err)
 		} else {
@@ -127,7 +127,7 @@ func TestNextToken_BodyDirectives(t *testing.T) {
 	assert := assert.New(t)
 	reader := strings.NewReader(bodyDirectives)
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 	assert.Nil(err)
 
 	var expectedList = []Token{
@@ -143,7 +143,7 @@ func TestNextToken_BodyDirectives(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		token, err := lexer.NextToken()
+		token, err := lexer.nextToken()
 		if expect.Kind == tError {
 			assert.NotNil(err)
 		} else {
@@ -162,7 +162,7 @@ func TestNextToken_MultiArgumentDirective(t *testing.T) {
 	assert := assert.New(t)
 	reader := strings.NewReader(multiArgumentDirectives)
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 	assert.Nil(err)
 
 	var expectedList = []Token{
@@ -177,7 +177,7 @@ func TestNextToken_MultiArgumentDirective(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		token, err := lexer.NextToken()
+		token, err := lexer.nextToken()
 		if expect.Kind == tError {
 			assert.NotNil(err)
 		} else {
@@ -194,7 +194,7 @@ func TestNextToken_NoBody(t *testing.T) {
 	assert := assert.New(t)
 	reader := strings.NewReader(noBody)
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 	assert.Nil(err)
 
 	var expectedList = []Token{
@@ -203,7 +203,7 @@ func TestNextToken_NoBody(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		token, err := lexer.NextToken()
+		token, err := lexer.nextToken()
 
 		if expect.Kind == tError {
 			assert.NotNil(err)
@@ -226,7 +226,7 @@ func TestNextToken_ClosedDirectives(t *testing.T) {
 	assert := assert.New(t)
 	reader := strings.NewReader(closedDirectives)
 
-	lexer, err := NewLexer(reader)
+	lexer, err := newLexer(reader)
 	assert.Nil(err)
 
 	var expectedList = []Token{
@@ -248,7 +248,7 @@ func TestNextToken_ClosedDirectives(t *testing.T) {
 	}
 
 	for _, expect := range expectedList {
-		token, err := lexer.NextToken()
+		token, err := lexer.nextToken()
 		if expect.Kind == tError {
 			assert.NotNil(err)
 		} else {

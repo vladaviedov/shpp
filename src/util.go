@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 )
 
-func ConvertPath(path string, fileDir string) string {
+func convertPath(path string, fileDir string) string {
 	// Absolute paths
 	if filepath.IsAbs(path) {
 		return path
@@ -30,7 +30,7 @@ func ConvertPath(path string, fileDir string) string {
 	return filepath.Join(fileDir, path)
 }
 
-func RunSystemCommand(command string) (string, error) {
+func runSystemCommand(command string) (string, error) {
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
@@ -41,7 +41,7 @@ func RunSystemCommand(command string) (string, error) {
 	return string(out), nil
 }
 
-func PandocConvert(inputPath string, inputFormat string) (*os.File, error) {
+func pandocConvert(inputPath string, inputFormat string) (*os.File, error) {
 	// Create temp file for pandoc output
 	pandocOutput, err := os.CreateTemp("", "*.shpp")
 	if err != nil {

@@ -31,7 +31,7 @@ type Asset struct {
 func createAsset(kind AssetKind, fileDir string, path string) Asset {
 	return Asset{
 		Kind:       kind,
-		SourcePath: ConvertPath(path, fileDir),
+		SourcePath: convertPath(path, fileDir),
 	}
 }
 
@@ -39,7 +39,7 @@ func updateHead(state *State) error {
 	// On shac files, we want to add a base tag
 	// Do this before adding any links
 	if opts.ShacInput {
-		state.Emitter.WriteOut(`<base href="@$@/">`)
+		state.Emitter.writeOut(`<base href="@$@/">`)
 	}
 
 	for i, asset := range state.Assets {
@@ -48,7 +48,7 @@ func updateHead(state *State) error {
 			return err
 		}
 
-		err = state.Emitter.WriteOut(generated)
+		err = state.Emitter.writeOut(generated)
 		if err != nil {
 			return err
 		}
