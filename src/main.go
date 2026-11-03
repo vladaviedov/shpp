@@ -114,7 +114,7 @@ func main() {
 
 	err = processFile(inStream, outStream, defaultName, inWorkingDir)
 	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
 	}
 }

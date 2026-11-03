@@ -65,15 +65,15 @@ func (e *Emitter) writeIM(data string) error {
 }
 
 func (e *Emitter) getIMReader() *bufio.Reader {
-	if e.IMReader != nil {
-		return e.IMReader
+	if e.IMReader == nil {
+		if e.SpillFile != nil {
+			e.IMReader = bufio.NewReader(e.SpillFile)
+		}
+
+		e.IMReader = bufio.NewReader(&e.InMemBuffer)
 	}
 
-	if e.SpillFile != nil {
-		return bufio.NewReader(e.SpillFile)
-	}
-
-	return bufio.NewReader(&e.InMemBuffer)
+	return e.IMReader
 }
 
 func (e *Emitter) writeOut(data string) error {

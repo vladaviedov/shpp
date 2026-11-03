@@ -81,6 +81,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 				if err != nil {
 					return err
 				}
+				tokenList = []Token{}
 			}
 			fallthrough
 		case tDirectiveArgument:
@@ -91,6 +92,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 				if err != nil {
 					return err
 				}
+				tokenList = []Token{}
 			}
 
 			return nil
@@ -123,11 +125,19 @@ func processBody(lexer *Lexer, state *State) error {
 				if err != nil {
 					return err
 				}
+				tokenList = []Token{}
 			}
 			fallthrough
 		case tDirectiveArgument:
 			tokenList = append(tokenList, token)
 		case tRaw:
+			if len(tokenList) != 0 {
+				err = evaluateDirective(tokenList, state, false)
+				if err != nil {
+					return err
+				}
+				tokenList = []Token{}
+			}
 			state.Emitter.writeIM(token.Data)
 		case tEOF:
 			if len(tokenList) != 0 {
@@ -135,6 +145,7 @@ func processBody(lexer *Lexer, state *State) error {
 				if err != nil {
 					return err
 				}
+				tokenList = []Token{}
 			}
 
 			return nil

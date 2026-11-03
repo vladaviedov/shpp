@@ -294,6 +294,8 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 		FileDir:  path.Dir(absPath),
 		ArgCount: uint64(len(withArgs)),
 		ArgData:  withArgs,
+		Vars:     state.Vars,
+		Emitter:  state.Emitter,
 	}
 
 	// Add inclusion marker
@@ -340,6 +342,8 @@ func includePandoc(filepath string, modifier string, state *State) error {
 		Assets:  state.Assets,
 		PageURL: state.PageURL,
 		FileDir: path.Dir(absPath),
+		Vars:    state.Vars,
+		Emitter: state.Emitter,
 	}
 
 	// Add inclusion marker
