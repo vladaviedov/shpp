@@ -247,7 +247,7 @@ func evalInPreamble(directive *Directive, state *State) error {
 func evalInBody(directive *Directive, state *State) error {
 	switch directive.Kind {
 	case dNop:
-		state.Emitter.writeIM("<!-- NOP -->")
+		return state.Emitter.writeIM("<!-- NOP -->")
 	case dInclude:
 		fallthrough
 	case dDerive:
@@ -260,7 +260,17 @@ func evalInBody(directive *Directive, state *State) error {
 
 		return includePandoc(directive.Arguments[0], format, state)
 	case dRun:
-		// TODO: implement
+		if !opts.ShellEscape {
+			fmt.Fprintf(os.Stderr, "warning: @run ignored (shell escape is disabled)\n")
+			return nil
+		}
+
+		result, err := runSystemCommand(strings.Join(directive.Arguments, " "))
+		if err != nil {
+			return err
+		}
+
+		return state.Emitter.writeIM(result)
 	case dManage:
 	default:
 		return fmt.Errorf("syntax error: '@%s' not allowed in body", inverseMap[directive.Kind])
