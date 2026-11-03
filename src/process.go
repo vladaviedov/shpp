@@ -19,6 +19,7 @@ type State struct {
 	FileDir  string
 	ArgCount uint64
 	ArgData  []string
+	Vars     map[string]string
 
 	Emitter *Emitter
 

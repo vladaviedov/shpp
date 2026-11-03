@@ -10,9 +10,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 )
 
 type DirectiveKind uint64
@@ -85,7 +87,7 @@ type Directive struct {
 }
 
 func evaluateDirective(tokenList []Token, state *State, isPreamble bool) error {
-	directive, err := parseDirective(tokenList)
+	directive, err := parseDirective(tokenList, state)
 	if err != nil {
 		return err
 	}
@@ -97,7 +99,7 @@ func evaluateDirective(tokenList []Token, state *State, isPreamble bool) error {
 	}
 }
 
-func parseDirective(tokenList []Token) (*Directive, error) {
+func parseDirective(tokenList []Token, state *State) (*Directive, error) {
 	directive := tokenList[0]
 	arguments := tokenList[1:]
 
@@ -120,7 +122,7 @@ func parseDirective(tokenList []Token) (*Directive, error) {
 	// Subsitute arguments
 	processedArguments := make([]string, 0, len(arguments))
 	for _, argument := range arguments {
-		subbed, err := substituteArgument(argument.Data)
+		subbed, err := substituteArgument(argument.Data, state)
 		if err != nil {
 			return nil, err
 		}
@@ -134,9 +136,60 @@ func parseDirective(tokenList []Token) (*Directive, error) {
 	}, nil
 }
 
-func substituteArgument(argument string) (string, error) {
-	// TODO: implement
-	return "", nil
+func substituteArgument(argument string, state *State) (string, error) {
+	reader := strings.NewReader(argument)
+	var parsed strings.Builder
+
+	for {
+		c, _, err := reader.ReadRune()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+
+		switch c {
+		case '\\':
+			next, _, err := reader.ReadRune()
+			if err != nil {
+				return "", err
+			}
+
+			if next == '{' || next == '}' {
+				parsed.WriteRune(next)
+			} else {
+				parsed.WriteRune(c)
+				reader.UnreadRune()
+			}
+		case '{':
+			var ident strings.Builder
+			for {
+				c, _, err = reader.ReadRune()
+				if err != nil {
+					return "", err
+				}
+
+				if c == '}' {
+					break
+				}
+
+				ident.WriteRune(c)
+			}
+
+			subVal, err := getVar(state, ident.String())
+			if err != nil {
+				return "", err
+			}
+
+			parsed.WriteString(subVal)
+		default:
+			parsed.WriteRune(c)
+		}
+
+	}
+
+	return parsed.String(), nil
 }
 
 func evalInPreamble(directive *Directive, state *State) error {
