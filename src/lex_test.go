@@ -1,5 +1,5 @@
 /**
- * @file lexer_test.go
+ * @file lex_test.go
  * @author Vladyslav Aviedov <vladaviedov at protonmail dot com>
  * @version pre0.8.0
  * @date 2026
