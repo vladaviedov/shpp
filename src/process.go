@@ -73,14 +73,20 @@ func processPreamble(lexer *Lexer, state *State) error {
 		switch token.Kind {
 		case tDirectiveName:
 			if len(tokenList) != 0 {
-				// TODO: process directive
+				err = evaluateDirective(tokenList, state, true)
+				if err != nil {
+					return err
+				}
 			}
 			fallthrough
 		case tDirectiveArgument:
 			tokenList = append(tokenList, token)
 		case tPreambleEnd:
 			if len(tokenList) != 0 {
-				// TODO: process directive
+				err = evaluateDirective(tokenList, state, true)
+				if err != nil {
+					return err
+				}
 			}
 
 			return nil
@@ -109,7 +115,10 @@ func processBody(lexer *Lexer, state *State) error {
 		switch token.Kind {
 		case tDirectiveName:
 			if len(tokenList) != 0 {
-				// TODO: process directive
+				err = evaluateDirective(tokenList, state, false)
+				if err != nil {
+					return err
+				}
 			}
 			fallthrough
 		case tDirectiveArgument:
@@ -118,7 +127,10 @@ func processBody(lexer *Lexer, state *State) error {
 			state.Emitter.WriteIM(token.Data)
 		case tEOF:
 			if len(tokenList) != 0 {
-				// TODO: process directive
+				err = evaluateDirective(tokenList, state, false)
+				if err != nil {
+					return err
+				}
 			}
 
 			return nil

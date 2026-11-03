@@ -11,6 +11,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 )
 
@@ -18,17 +19,16 @@ type DirectiveKind uint64
 
 const (
 	dNop DirectiveKind = iota
-	dIgnore
 	dStyle
 	dScript
+	dIgnore
 	dUrl
+	dTemplate
 	dInclude
+	dDerive
 	dPandoc
 	dRun
 	dManage
-	dDefine
-	dTemplate
-	dDerive
 )
 
 type DirectiveDescription struct {
@@ -41,36 +41,42 @@ const ddUnlimited = -1
 
 var directiveDict = map[string]DirectiveDescription{
 	// General
-	"nop":    {Kind: dNop, RequiredArgs: 0, OptionalArgs: ddUnlimited},
-	"style":  {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
-	"script": {Kind: dScript, RequiredArgs: 1, OptionalArgs: 1},
+	"nop": {Kind: dNop, RequiredArgs: 0, OptionalArgs: ddUnlimited},
 	// Preamble
+	"style":    {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
+	"script":   {Kind: dScript, RequiredArgs: 1, OptionalArgs: 1},
 	"ignore":   {Kind: dIgnore, RequiredArgs: 0, OptionalArgs: 0},
 	"url":      {Kind: dUrl, RequiredArgs: 1, OptionalArgs: 0},
 	"template": {Kind: dTemplate, RequiredArgs: 1, OptionalArgs: 0},
 	// Body
 	"include": {Kind: dInclude, RequiredArgs: 1, OptionalArgs: 0},
+	"derive":  {Kind: dDerive, RequiredArgs: 1, OptionalArgs: ddUnlimited},
 	"pandoc":  {Kind: dPandoc, RequiredArgs: 1, OptionalArgs: 1},
 	"run":     {Kind: dRun, RequiredArgs: 1, OptionalArgs: ddUnlimited},
 	"manage":  {Kind: dManage, RequiredArgs: 0, OptionalArgs: 1},
-	"derive":  {Kind: dDerive, RequiredArgs: 1, OptionalArgs: ddUnlimited},
 }
 
 var inverseMap = map[DirectiveKind]string{
 	// General
-	dNop:    "nop",
-	dStyle:  "style",
-	dScript: "script",
+	dNop: "nop",
 	// Preamble
+	dStyle:    "style",
+	dScript:   "script",
 	dIgnore:   "ignore",
 	dUrl:      "url",
 	dTemplate: "template",
 	// Body
 	dInclude: "include",
+	dDerive:  "derive",
 	dPandoc:  "pandoc",
 	dRun:     "run",
 	dManage:  "manage",
-	dDerive:  "derive",
+}
+
+var scriptModifierMap = map[string]AssetKind{
+	"defer": aScriptDefer,
+	"async": aScriptAsync,
+	"":      aScript,
 }
 
 type Directive struct {
@@ -78,7 +84,7 @@ type Directive struct {
 	Arguments []string
 }
 
-func EvaluateDirective(tokenList []Token, state *State, isPreamble bool) error {
+func evaluateDirective(tokenList []Token, state *State, isPreamble bool) error {
 	directive, err := parseDirective(tokenList)
 	if err != nil {
 		return err
@@ -137,9 +143,21 @@ func evalInPreamble(directive *Directive, state *State) error {
 	switch directive.Kind {
 	case dNop:
 	case dStyle:
-		// TODO: implement asset stuff
+		asset := createAsset(aStylesheet, state.FileDir, directive.Arguments[0])
+		state.Assets = append(state.Assets, asset)
 	case dScript:
-		// TODO: implement asset stuff
+		modifier := ""
+		if len(directive.Arguments) == 2 {
+			modifier = directive.Arguments[1]
+		}
+
+		scriptKind, valid := scriptModifierMap[modifier]
+		if !valid {
+			return fmt.Errorf("syntax error: unknown @script modifier '%s'", modifier)
+		}
+
+		asset := createAsset(scriptKind, state.FileDir, directive.Arguments[0])
+		state.Assets = append(state.Assets, asset)
 	case dIgnore:
 		state.Ignored = true
 	case dUrl:
@@ -176,18 +194,110 @@ func evalInPreamble(directive *Directive, state *State) error {
 func evalInBody(directive *Directive, state *State) error {
 	switch directive.Kind {
 	case dNop:
-	case dStyle:
-		// TODO: implement asset stuff
-	case dScript:
-		// TODO: implement asset stuff
+		state.Emitter.WriteIM("<!-- NOP -->")
 	case dInclude:
-	case dPandoc:
-	case dRun:
-	case dManage:
+		fallthrough
 	case dDerive:
+		return includeCommon(directive.Arguments[0], state, directive.Arguments[1:])
+	case dPandoc:
+		format := ""
+		if len(directive.Arguments) == 2 {
+			format = directive.Arguments[1]
+		}
+
+		return includePandoc(directive.Arguments[0], format, state)
+	case dRun:
+		// TODO: implement
+	case dManage:
 	default:
 		return fmt.Errorf("syntax error: '@%s' not allowed in body", inverseMap[directive.Kind])
 	}
 
+	return nil
+}
+
+func includeCommon(filepath string, state *State, withArgs []string) error {
+	absPath := ConvertPath(filepath, state.FileDir)
+	file, err := os.Open(absPath)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer file.Close()
+
+	// Create new state
+	childState := &State{
+		Assets:   state.Assets,
+		PageURL:  state.PageURL,
+		FileDir:  path.Dir(absPath),
+		ArgCount: uint64(len(withArgs)),
+		ArgData:  withArgs,
+	}
+
+	// Add inclusion marker
+	if opts.Marker {
+		marker := fmt.Sprintf("<!-- START %s -->", filepath)
+		state.Emitter.WriteIM(marker)
+	}
+
+	// Process file
+	err = processFileIM(file, childState)
+	if err != nil {
+		return err
+	}
+
+	// Add inclusion marker
+	if opts.Marker {
+		marker := fmt.Sprintf("<!-- END %s -->", filepath)
+		state.Emitter.WriteIM(marker)
+	}
+
+	// Copy assets from child
+	state.Assets = childState.Assets
+	return nil
+}
+
+func includePandoc(filepath string, modifier string, state *State) error {
+	absPath := ConvertPath(filepath, state.FileDir)
+	inputFormat := modifier
+
+	if !opts.ShellEscape {
+		fmt.Fprintf(os.Stderr, "warning: @pandoc ignored (shell escape is disabled)\n")
+		return nil
+	}
+
+	// Run pandoc logic
+	pandocOut, err := PandocConvert(absPath, inputFormat)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(pandocOut.Name())
+
+	// Create new state
+	childState := &State{
+		Assets:  state.Assets,
+		PageURL: state.PageURL,
+		FileDir: path.Dir(absPath),
+	}
+
+	// Add inclusion marker
+	if opts.Marker {
+		marker := fmt.Sprintf("<!-- START %s -->", filepath)
+		state.Emitter.WriteIM(marker)
+	}
+
+	// Process file
+	err = processFileIM(pandocOut, childState)
+	if err != nil {
+		return err
+	}
+
+	// Add inclusion marker
+	if opts.Marker {
+		marker := fmt.Sprintf("<!-- END %s -->", filepath)
+		state.Emitter.WriteIM(marker)
+	}
+
+	// Copy assets from child
+	state.Assets = childState.Assets
 	return nil
 }
