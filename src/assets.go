@@ -67,9 +67,9 @@ func generateHeadAsset(asset *Asset, id int) (string, error) {
 		return generateScriptTag(asset, id, "defer")
 	case aScriptAsync:
 		return generateScriptTag(asset, id, "async")
-	default:
-		panic("invalid asset label")
 	}
+
+	return "", nil
 }
 
 func generateStyleTag(asset *Asset, id int) (string, error) {

@@ -55,7 +55,7 @@ var directiveDict = map[string]DirectiveDescription{
 	"derive":  {Kind: dDerive, RequiredArgs: 1, OptionalArgs: ddUnlimited},
 	"pandoc":  {Kind: dPandoc, RequiredArgs: 1, OptionalArgs: 1},
 	"run":     {Kind: dRun, RequiredArgs: 1, OptionalArgs: ddUnlimited},
-	"manage":  {Kind: dManage, RequiredArgs: 0, OptionalArgs: 1},
+	"manage":  {Kind: dManage, RequiredArgs: 1, OptionalArgs: 0},
 }
 
 var inverseMap = map[DirectiveKind]string{
@@ -262,7 +262,6 @@ func evalInBody(directive *Directive, state *State) error {
 	case dRun:
 		if !opts.ShellEscape {
 			fmt.Fprintf(os.Stderr, "warning: @run ignored (shell escape is disabled)\n")
-			return nil
 		}
 
 		result, err := runSystemCommand(strings.Join(directive.Arguments, " "))
@@ -272,11 +271,19 @@ func evalInBody(directive *Directive, state *State) error {
 
 		return state.Emitter.writeIM(result)
 	case dManage:
+		// TODO: implement
+		if !opts.ShacInput {
+			fmt.Fprintf(os.Stderr, "warning: @manage ignored (shac integration not enabled)\n")
+
+			// Replace with just the argument
+			return state.Emitter.writeIM(directive.Arguments[0])
+		}
+
+		state.Assets = append(state.Assets, createAsset(aBinary, state.FileDir, directive.Arguments[0]))
+		return state.Emitter.writeIM("@" + strconv.Itoa(len(state.Assets)-1) + "@")
 	default:
 		return fmt.Errorf("syntax error: '@%s' not allowed in body", inverseMap[directive.Kind])
 	}
-
-	return nil
 }
 
 func includeCommon(filepath string, state *State, withArgs []string) error {
