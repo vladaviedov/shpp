@@ -15,7 +15,7 @@ import (
 
 func setVar(state *State, key string, value string) error {
 	_, err := strconv.ParseUint(key, 10, 64)
-	if err != nil {
+	if err == nil {
 		return fmt.Errorf("syntax error: cannot set numerical variable with macro")
 	}
 
@@ -25,7 +25,7 @@ func setVar(state *State, key string, value string) error {
 
 func getVar(state *State, key string) (string, error) {
 	num, err := strconv.ParseUint(key, 10, 64)
-	if err != nil {
+	if err == nil {
 		if num < state.ArgCount {
 			return state.ArgData[num], nil
 		}

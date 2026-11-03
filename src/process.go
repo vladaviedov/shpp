@@ -35,6 +35,7 @@ func processFile(inStream io.Reader, outStream io.Writer, defaultName string, wo
 		ArgCount: 0,
 		ArgData:  nil,
 		Emitter:  newEmitter(outStream),
+		Vars:     make(map[string]string),
 	}
 	defer state.Emitter.destroy()
 
