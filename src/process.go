@@ -9,6 +9,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -34,6 +35,7 @@ func processFile(inStream io.Reader, outStream io.Writer, defaultName string, wo
 		ArgData:  nil,
 		Emitter:  newEmitter(outStream),
 	}
+	defer state.Emitter.destroy()
 
 	err := processFileIM(inStream, state)
 	if err != nil {
@@ -144,6 +146,76 @@ func processBody(lexer *Lexer, state *State) error {
 }
 
 func writeOutput(state *State) error {
-	// TODO: implement
+	if opts.ShacInput {
+		err := writeShacPreamble(state)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Locate start of head
+	err := findHead(state)
+	if err != nil {
+		return err
+	}
+
+	// Insert stuff into head
+	err = updateHead(state)
+	if err != nil {
+		return err
+	}
+
+	// Flush rest of file down
+	return state.Emitter.flushIM()
+}
+
+func writeShacPreamble(state *State) error {
+	err := state.Emitter.writeOut("@page " + state.PageURL + "\n")
+	if err != nil {
+		return err
+	}
+
+	for _, asset := range state.Assets {
+		err = state.Emitter.writeOut("@asset " + asset.SourcePath + "\n")
+		if err != nil {
+			return err
+		}
+	}
+
+	return state.Emitter.writeOut("@html\n")
+}
+
+func findHead(state *State) error {
+	imReader := state.Emitter.getIMReader()
+
+	// Find head
+	target := "<head>"
+	charsMatched := 0
+	for {
+		ch, err := imReader.ReadByte()
+		if err == io.EOF {
+			return fmt.Errorf("syntax error: no head")
+		}
+		if err != nil {
+			return err
+		}
+
+		// Can send straight to output - no need to hold
+		state.Emitter.writeOut(string(ch))
+
+		// To lowercase
+		if ch >= 'A' && ch <= 'Z' {
+			ch += 0x20
+		}
+
+		if ch == target[charsMatched] {
+			charsMatched++
+		}
+		if charsMatched == len(target) {
+			// Found head
+			break
+		}
+	}
+
 	return nil
 }

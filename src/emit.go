@@ -9,6 +9,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"os"
@@ -18,6 +19,7 @@ type Emitter struct {
 	InMemBuffer bytes.Buffer
 	SpillFile   *os.File
 
+	IMReader     *bufio.Reader
 	OutputStream io.Writer
 }
 
@@ -62,12 +64,16 @@ func (e *Emitter) writeIM(data string) error {
 	return nil
 }
 
-func (e *Emitter) getIMReader() io.Reader {
-	if e.SpillFile != nil {
-		return e.SpillFile
+func (e *Emitter) getIMReader() *bufio.Reader {
+	if e.IMReader != nil {
+		return e.IMReader
 	}
 
-	return &e.InMemBuffer
+	if e.SpillFile != nil {
+		return bufio.NewReader(e.SpillFile)
+	}
+
+	return bufio.NewReader(&e.InMemBuffer)
 }
 
 func (e *Emitter) writeOut(data string) error {
