@@ -12,11 +12,6 @@ import (
 	"io"
 )
 
-type Asset struct {
-	Kind       AssetKind
-	SourcePath string
-}
-
 type State struct {
 	Assets   []Asset
 	PageURL  string
