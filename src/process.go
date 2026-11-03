@@ -175,8 +175,14 @@ func writeOutput(state *State) error {
 		}
 	}
 
+	// Write doctype
+	err := state.Emitter.writeOut("<!DOCTYPE html>")
+	if err != nil {
+		return err
+	}
+
 	// Locate start of head
-	err := findHead(state)
+	err = findHead(state)
 	if err != nil {
 		return err
 	}
