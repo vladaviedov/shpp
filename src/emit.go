@@ -35,7 +35,7 @@ func (e *Emitter) writeIM(data string) error {
 		return err
 	}
 
-	if e.InMemBuffer.Len()+len(data) <= int(opts.MemoryBufferSize) {
+	if e.InMemBuffer.Len()+len(data) <= int(opts.IMBufferSize) {
 		_, err := e.InMemBuffer.WriteString(data)
 		return err
 	}

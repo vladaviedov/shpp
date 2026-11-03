@@ -146,6 +146,15 @@ func processBody(lexer *Lexer, state *State) error {
 }
 
 func writeOutput(state *State) error {
+	if state.Ignored {
+		// Shac needs a phony document
+		if opts.ShacInput {
+			return state.Emitter.writeOut("@ignore\n")
+		}
+
+		return nil
+	}
+
 	if opts.ShacInput {
 		err := writeShacPreamble(state)
 		if err != nil {
