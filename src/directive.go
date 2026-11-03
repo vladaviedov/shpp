@@ -104,17 +104,17 @@ func parseDirective(tokenList []Token) (*Directive, error) {
 	// Dictionary lookup
 	info, valid := directiveDict[directive.Data]
 	if !valid {
-		return nil, fmt.Errorf("syntax error: invalid directive '@%s'", directive)
+		return nil, fmt.Errorf("syntax error: invalid directive '@%s'", directive.Data)
 	}
 
 	// Argument count checker
 	minArgs := info.RequiredArgs
 	maxArgs := info.RequiredArgs + info.OptionalArgs
 	if len(arguments) < minArgs {
-		return nil, fmt.Errorf("syntax error: too few arguments for '@%s' (%d min)", directive, minArgs)
+		return nil, fmt.Errorf("syntax error: too few arguments for '@%s' (%d min)", directive.Data, minArgs)
 	}
 	if len(arguments) > maxArgs && info.OptionalArgs != ddUnlimited {
-		return nil, fmt.Errorf("syntax error: too many arguments for '@%s' (%d max)", directive, maxArgs)
+		return nil, fmt.Errorf("syntax error: too many arguments for '@%s' (%d max)", directive.Data, maxArgs)
 	}
 
 	// Subsitute arguments
