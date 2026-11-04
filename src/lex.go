@@ -93,11 +93,17 @@ func (s *Lexer) nextToken() (Token, error) {
 	for {
 		if s.FlagDirective {
 			// Prepare lookahead
+			var next byte
 			nextRes, err := s.Stream.Peek(1)
 			if err != nil {
-				return tokenError, fmt.Errorf("failed to read stream: %w", err)
+				if err != io.EOF {
+					return tokenError, fmt.Errorf("failed to read stream: %w", err)
+				}
+
+				next = '\n'
+			} else {
+				next = nextRes[0]
 			}
-			next := nextRes[0]
 
 			switch s.Head {
 			case '@':
