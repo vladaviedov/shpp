@@ -332,17 +332,15 @@ func (s *Lexer) parseIdentifier() (string, error) {
 	}
 
 	for s.Head != '}' {
-		if unicode.IsNumber(s.Head) {
-			if numberIdent {
-				parsed.WriteRune(s.Head)
-			} else if parsed.Len() == 0 {
-				parsed.WriteRune(s.Head)
-				numberIdent = true
-			}
-		} else if unicode.IsLetter(s.Head) {
+		if parsed.Len() == 0 && unicode.IsNumber(s.Head) {
 			parsed.WriteRune(s.Head)
+			numberIdent = true
 		} else {
-			return "", fmt.Errorf("failed to lex identifier: invalid character %q", s.Head)
+			if numberIdent && !unicode.IsNumber(s.Head) {
+				return "", fmt.Errorf("failed to lex identifier: non-digit in numerical argument")
+			}
+
+			parsed.WriteRune(s.Head)
 		}
 
 		err := s.advanceHead()

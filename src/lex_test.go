@@ -257,3 +257,79 @@ func TestNextToken_ClosedDirectives(t *testing.T) {
 		assert.Equal(expect, token)
 	}
 }
+
+func TestParseIdentifier_Unterminated(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader("{test\n")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	_, err = lexer.parseIdentifier()
+	assert.NotNil(err)
+}
+
+func TestParseIdentifier_StringIdentifier(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader("{test}\n")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	ident, err := lexer.parseIdentifier()
+	assert.Nil(err)
+	assert.Equal("test", ident)
+}
+
+func TestParseIdentifier_NumericalIdentifier(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader("{4}\n")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	ident, err := lexer.parseIdentifier()
+	assert.Nil(err)
+	assert.Equal("4", ident)
+}
+
+func TestParseIdentifier_MixedIdentifier(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader("{2cool}\n")
+	reader2 := strings.NewReader("{cool4}\n")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+
+	// Starting with int not allowed
+	_, err = lexer1.parseIdentifier()
+	assert.NotNil(err)
+
+	// Continue with int allowed
+	ident, err := lexer2.parseIdentifier()
+	assert.Nil(err)
+	assert.Equal("cool4", ident)
+}
+
+func TestParseIdentifier_SpecialChars(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader("{.name}\n")
+	reader2 := strings.NewReader("{.line}\n")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+
+	// Starting with int not allowed
+	ident, err := lexer1.parseIdentifier()
+	assert.Nil(err)
+	assert.Equal(".name", ident)
+
+	// Continue with int allowed
+	ident, err = lexer2.parseIdentifier()
+	assert.Nil(err)
+	assert.Equal(".line", ident)
+}
