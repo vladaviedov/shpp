@@ -40,8 +40,9 @@ test:
 
 .PHONY: coverage
 coverage:
-	$(GO) test -coverprofile=coverage.out ./src
-	$(GO) tool cover -html=coverage.out -o coverage.html
+	mkdir -p cov
+	$(GO) test -coverprofile=cov/coverage.out ./src
+	$(GO) tool cover -html=cov/coverage.out -o cov/index.html
 
 .PHONY: install
 install: $(TARGET)
