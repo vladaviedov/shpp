@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  linux-build:
+    name: Linux Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+    - name: Download dependencies
+      run: go get ./src
+    - name: Build
+      run: make release
+
+  macos-build:
+    name: MacOS Build
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+    - name: Download dependencies
+      run: go get ./src
+    - name: Build
+      run: make release
