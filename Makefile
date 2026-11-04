@@ -37,6 +37,12 @@ $(BUILD)/bin:
 test:
 	$(GO) test -v ./src
 
+
+.PHONY: coverage
+coverage:
+	$(GO) test -coverprofile=coverage.out ./src
+	$(GO) tool cover -html=coverage.out -o coverage.html
+
 .PHONY: install
 install: $(TARGET)
 	mkdir -p $(PREFIX)/bin

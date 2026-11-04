@@ -1,0 +1,36 @@
+name: Test
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  linux-test:
+    name: Linux Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+    - name: Download dependencies
+      run: go get ./src
+    - name: Test
+      run: make test
+
+  macos-test:
+    name: MacOS Test
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+    - name: Download dependencies
+      run: go get ./src
+    - name: Test
+      run: make test
