@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0
+- **Breaking**: `@manage` is now used inline
+    - `@manage <img src="file.png" />` => `<img src="@manage file.png@" />`
+- Codebase rebuild
+- Support directive inlining
+- Add limited testing
+
 ## 0.7.0
 - New directives
     - `@run`
