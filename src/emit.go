@@ -67,10 +67,11 @@ func (e *Emitter) writeIM(data string) error {
 func (e *Emitter) getIMReader() *bufio.Reader {
 	if e.IMReader == nil {
 		if e.SpillFile != nil {
+			e.SpillFile.Seek(0, io.SeekStart)
 			e.IMReader = bufio.NewReader(e.SpillFile)
+		} else {
+			e.IMReader = bufio.NewReader(&e.InMemBuffer)
 		}
-
-		e.IMReader = bufio.NewReader(&e.InMemBuffer)
 	}
 
 	return e.IMReader
