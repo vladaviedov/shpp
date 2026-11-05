@@ -13,16 +13,27 @@ import (
 	"io"
 )
 
+type FilepathResolver uint64
+
+const (
+	frNormal FilepathResolver = iota
+	frRoot
+	frParent
+)
+
 type State struct {
-	Assets   []Asset
 	PageURL  string
-	FileDir  string
+	Assets   []Asset
+	Emitter  *Emitter
 	ArgCount uint64
 	ArgData  []string
 	Vars     map[string]string
 
-	Emitter *Emitter
+	FileDir       string
+	ParentFileDir string
+	PathResolver  FilepathResolver
 
+	IsChild    bool
 	UrlChanged bool
 	IsTemplate bool
 	Ignored    bool
@@ -30,12 +41,13 @@ type State struct {
 
 func processFile(inStream io.Reader, outStream io.Writer, defaultName string, workingDir string) error {
 	state := &State{
-		PageURL:  defaultName + ".html",
-		FileDir:  workingDir,
-		ArgCount: 0,
-		ArgData:  nil,
-		Emitter:  newEmitter(outStream),
-		Vars:     make(map[string]string),
+		PageURL:      defaultName + ".html",
+		FileDir:      workingDir,
+		ArgCount:     0,
+		ArgData:      nil,
+		Emitter:      newEmitter(outStream),
+		Vars:         make(map[string]string),
+		PathResolver: frNormal,
 	}
 	defer state.Emitter.destroy()
 

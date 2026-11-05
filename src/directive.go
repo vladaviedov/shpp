@@ -21,6 +21,7 @@ type DirectiveKind uint64
 
 const (
 	dNop DirectiveKind = iota
+	dPathfrom
 	dStyle
 	dScript
 	dIgnore
@@ -44,7 +45,8 @@ const ddUnlimited = -1
 
 var directiveDict = map[string]DirectiveDescription{
 	// General
-	"nop": {Kind: dNop, RequiredArgs: 0, OptionalArgs: ddUnlimited},
+	"nop":      {Kind: dNop, RequiredArgs: 0, OptionalArgs: ddUnlimited},
+	"pathfrom": {Kind: dPathfrom, RequiredArgs: 1, OptionalArgs: 0},
 	// Preamble
 	"style":    {Kind: dStyle, RequiredArgs: 1, OptionalArgs: 0},
 	"script":   {Kind: dScript, RequiredArgs: 1, OptionalArgs: 1},
@@ -82,6 +84,12 @@ var scriptModifierMap = map[string]AssetKind{
 	"defer": aScriptDefer,
 	"async": aScriptAsync,
 	"":      aScript,
+}
+
+var pathResolverMap = map[string]FilepathResolver{
+	"normal": frNormal,
+	"root":   frRoot,
+	"parent": frParent,
 }
 
 type Directive struct {
@@ -198,6 +206,13 @@ func substituteArgument(argument string, state *State) (string, error) {
 func evalInPreamble(directive *Directive, state *State) error {
 	switch directive.Kind {
 	case dNop:
+	case dPathfrom:
+		resolver, valid := pathResolverMap[directive.Arguments[0]]
+		if !valid {
+			return fmt.Errorf("syntax error: unknown filepath resolver: '%s'", directive.Arguments[0])
+		}
+
+		state.PathResolver = resolver
 	case dStyle:
 		asset := createAsset(aStylesheet, state.FileDir, directive.Arguments[0])
 		state.Assets = append(state.Assets, asset)
@@ -251,6 +266,13 @@ func evalInBody(directive *Directive, state *State) error {
 	switch directive.Kind {
 	case dNop:
 		return state.Emitter.writeIM("<!-- NOP -->")
+	case dPathfrom:
+		resolver, valid := pathResolverMap[directive.Arguments[0]]
+		if !valid {
+			return fmt.Errorf("syntax error: unknown filepath resolver: '%s'", directive.Arguments[0])
+		}
+
+		state.PathResolver = resolver
 	case dInclude:
 		fallthrough
 	case dDerive:
@@ -281,17 +303,19 @@ func evalInBody(directive *Directive, state *State) error {
 			return state.Emitter.writeIM(directive.Arguments[0])
 		}
 
-		state.Assets = append(state.Assets, createAsset(aBinary, state.FileDir, directive.Arguments[0]))
+		state.Assets = append(state.Assets, createAsset(aBinary, resolveFileDir(state), directive.Arguments[0]))
 		return state.Emitter.writeIM("@" + strconv.Itoa(len(state.Assets)-1) + "@")
 	case dInterp:
 		return state.Emitter.writeIM(strings.Join(directive.Arguments, " "))
 	default:
 		return fmt.Errorf("syntax error: '@%s' not allowed in body", inverseMap[directive.Kind])
 	}
+
+	return nil
 }
 
 func includeCommon(filepath string, state *State, withArgs []string) error {
-	absPath := convertPath(filepath, state.FileDir)
+	absPath := convertPath(filepath, resolveFileDir(state))
 	file, err := os.Open(absPath)
 	if err != nil {
 		return fmt.Errorf("failed to open source file: %w", err)
@@ -300,13 +324,16 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 
 	// Create new state
 	childState := &State{
-		Assets:   state.Assets,
-		PageURL:  state.PageURL,
-		FileDir:  path.Dir(absPath),
-		ArgCount: uint64(len(withArgs)),
-		ArgData:  withArgs,
-		Vars:     state.Vars,
-		Emitter:  state.Emitter,
+		Assets:        state.Assets,
+		PageURL:       state.PageURL,
+		FileDir:       path.Dir(absPath),
+		ArgCount:      uint64(len(withArgs)),
+		ArgData:       withArgs,
+		Vars:          state.Vars,
+		Emitter:       state.Emitter,
+		IsChild:       true,
+		ParentFileDir: state.FileDir,
+		PathResolver:  frNormal,
 	}
 
 	// Add inclusion marker
@@ -333,7 +360,7 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 }
 
 func includePandoc(filepath string, modifier string, state *State) error {
-	absPath := convertPath(filepath, state.FileDir)
+	absPath := convertPath(filepath, resolveFileDir(state))
 	inputFormat := modifier
 
 	if !opts.ShellEscape {
@@ -350,11 +377,14 @@ func includePandoc(filepath string, modifier string, state *State) error {
 
 	// Create new state
 	childState := &State{
-		Assets:  state.Assets,
-		PageURL: state.PageURL,
-		FileDir: path.Dir(absPath),
-		Vars:    state.Vars,
-		Emitter: state.Emitter,
+		Assets:        state.Assets,
+		PageURL:       state.PageURL,
+		FileDir:       path.Dir(absPath),
+		Vars:          state.Vars,
+		Emitter:       state.Emitter,
+		IsChild:       true,
+		ParentFileDir: state.FileDir,
+		PathResolver:  frNormal,
 	}
 
 	// Add inclusion marker
@@ -378,4 +408,17 @@ func includePandoc(filepath string, modifier string, state *State) error {
 	// Copy assets from child
 	state.Assets = childState.Assets
 	return nil
+}
+
+func resolveFileDir(state *State) string {
+	switch state.PathResolver {
+	case frNormal:
+		return state.FileDir
+	case frRoot:
+		return opts.Root
+	case frParent:
+		return state.ParentFileDir
+	}
+
+	panic("invalil file resolver state")
 }
