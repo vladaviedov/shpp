@@ -62,6 +62,7 @@ type Lexer struct {
 	// State flags
 	FlagPreamble  bool
 	FlagDirective bool
+	FlagStrong bool
 	FlagEOF       bool
 }
 
@@ -163,6 +164,14 @@ func (s *Lexer) nextToken() (Token, error) {
 					return tokenEscape, nil
 				}
 
+				// Strong mode
+				if dir[0] == '!' {
+					dir = dir[1:]
+					s.FlagStrong = true
+				} else {
+					s.FlagStrong = false
+				}
+
 				// Regular directive name
 				return Token{
 					Kind: tDirectiveName,
@@ -217,7 +226,7 @@ func (s *Lexer) parseDirectiveName() (string, error) {
 	}
 
 	for s.Head != ' ' && s.Head != '\t' && s.Head != '\n' {
-		if !unicode.IsLetter(s.Head) {
+		if !unicode.IsLetter(s.Head) && s.Head != '!' {
 			return "", fmt.Errorf("failed to lex directive: invalid character %q", s.Head)
 		}
 		parsed.WriteRune(s.Head)
@@ -372,6 +381,9 @@ func (s *Lexer) advanceHead() error {
 		return fmt.Errorf("failed to read stream: %w", err)
 	}
 
+	if s.FlagStrong && val == '\n' {
+		val = ' '
+	}
 	s.Head = val
 	return nil
 }
