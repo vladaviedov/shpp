@@ -127,10 +127,12 @@ func (s *Lexer) nextToken() (Token, error) {
 					return tokenError, err
 				}
 
-				return Token{
-					Kind: tDirectiveArgument,
-					Data: arg,
-				}, nil
+				if arg != "" {
+					return Token{
+						Kind: tDirectiveArgument,
+						Data: arg,
+					}, nil
+				}
 			}
 		} else {
 			switch s.Head {
@@ -263,16 +265,22 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 			if state == qNone {
 				ident, err := s.parseIdentifier()
 				if err != nil {
-					return "", nil
+					return "", err
 				}
 
+				parsed.WriteRune('{')
 				parsed.WriteString(ident)
+				parsed.WriteRune('}')
 			} else {
 				parsed.WriteRune(s.Head)
 			}
-		case '@':
-			fallthrough
 		case ' ':
+			// Ignore WS if argument is empty
+			if parsed.Len() == 0 {
+				break
+			}
+			fallthrough
+		case '@':
 			fallthrough
 		case '\t':
 			if state != qNone {
@@ -282,22 +290,28 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 
 			fallthrough
 		case '\n':
+			// Open quote
+			if state != qNone {
+				return "", fmt.Errorf("syntax error: unclosed quotes")
+			}
 			return parsed.String(), nil
 		case '\\':
 			err := s.advanceHead()
 			if err != nil {
-				return "", nil
+				return "", err
 			}
 
 			switch s.Head {
 			case '"':
-				if state != qSingle {
-					parsed.WriteRune(s.Head)
+				if state == qSingle {
+					parsed.WriteRune('\\')
 				}
+				parsed.WriteRune(s.Head)
 			case '\'':
-				if state != qDouble {
-					parsed.WriteRune(s.Head)
+				if state == qDouble {
+					parsed.WriteRune('\\')
 				}
+				parsed.WriteRune(s.Head)
 			case '\\':
 				parsed.WriteRune(s.Head)
 			case ' ':
@@ -347,11 +361,6 @@ func (s *Lexer) parseIdentifier() (string, error) {
 		if err != nil {
 			return "", err
 		}
-	}
-
-	err = s.advanceHead()
-	if err != nil {
-		return "", err
 	}
 
 	return parsed.String(), nil
