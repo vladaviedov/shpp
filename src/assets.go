@@ -1,7 +1,7 @@
 /**
  * @file assets.go
  * @author Vladyslav Aviedov <vladaviedov at protonmail dot com>
- * @version pre0.8.0
+ * @version 0.9.0
  * @date 2026
  * @license GPLv3.0
  * @brief Asset management.

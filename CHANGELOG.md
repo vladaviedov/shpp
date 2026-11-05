@@ -1,11 +1,22 @@
 # Changelog
 
+## 0.9.0
+
+- New directives
+    - `@interp`
+    - `@pathfrom`
+- Add strong mode
+- Fix data being lost when processing large files
+- Fix variables not being parsed properly
+- Improve testing
+
 ## 0.8.0
 - **Breaking**: `@manage` is now used inline
     - `@manage <img src="file.png" />` => `<img src="@manage file.png@" />`
 - Codebase rebuild
 - Support directive inlining
 - Add limited testing
+- Stop parsing HTML tree
 
 ## 0.7.0
 - New directives
@@ -43,7 +54,7 @@
     - `@url`
 
 ## 0.2.0
-- Added preamble
+- Add preamble
 - Improved path handling
 - More correct compilation using HTML tree objects
 - `@style` and `@script` now insert content into `<head>`

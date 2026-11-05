@@ -1,7 +1,7 @@
 /**
  * @file main.go
  * @author Vladyslav Aviedov <vladaviedov at protonmail dot com>
- * @version pre0.8.0
+ * @version 0.9.0
  * @date 2026
  * @license GPLv3.0
  */
@@ -37,7 +37,7 @@ var opts struct {
 }
 
 // Populated by build system
-var Version string = "0.8.0"
+var Version string = "0.9.0"
 
 func main() {
 	parser := flags.NewParser(&opts, flags.Default^flags.HelpFlag^flags.PrintErrors)
