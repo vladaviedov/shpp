@@ -62,7 +62,7 @@ type Lexer struct {
 	// State flags
 	FlagPreamble  bool
 	FlagDirective bool
-	FlagStrong bool
+	FlagStrong    bool
 	FlagEOF       bool
 }
 
@@ -107,6 +107,8 @@ func (s *Lexer) nextToken() (Token, error) {
 			}
 
 			switch s.Head {
+			case ' ':
+			case '\t':
 			case '@':
 				// Exit directive mode
 				s.FlagDirective = false
@@ -128,12 +130,10 @@ func (s *Lexer) nextToken() (Token, error) {
 					return tokenError, err
 				}
 
-				if arg != "" {
-					return Token{
-						Kind: tDirectiveArgument,
-						Data: arg,
-					}, nil
-				}
+				return Token{
+					Kind: tDirectiveArgument,
+					Data: arg,
+				}, nil
 			}
 		} else {
 			switch s.Head {
@@ -242,12 +242,6 @@ func (s *Lexer) parseDirectiveName() (string, error) {
 
 func (s *Lexer) parseDirectiveArgument() (string, error) {
 	var parsed strings.Builder
-
-	// Advance head at the start
-	err := s.advanceHead()
-	if err != nil {
-		return "", err
-	}
 
 	state := qNone
 	for {
@@ -381,7 +375,7 @@ func (s *Lexer) advanceHead() error {
 		return fmt.Errorf("failed to read stream: %w", err)
 	}
 
-	if s.FlagStrong && val == '\n' {
+	if s.FlagDirective && s.FlagStrong && val == '\n' {
 		val = ' '
 	}
 	s.Head = val

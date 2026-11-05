@@ -262,6 +262,81 @@ func TestNextToken_ClosedDirectives(t *testing.T) {
 	}
 }
 
+const multilineDirective = `<html>
+	<body>
+		@derive template.shpp.in \
+			with \
+			"Second Argument"
+	</body>
+</html>
+`
+
+func TestNextToken_MultilineDirective(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(multilineDirective)
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	var expectedList = []Token{
+		{Kind: tPreambleEnd, Data: ""},
+		{Kind: tRaw, Data: "<html>\n\t<body>\n\t\t"},
+		{Kind: tDirectiveName, Data: "derive"},
+		{Kind: tDirectiveArgument, Data: "template.shpp.in"},
+		{Kind: tDirectiveArgument, Data: "with"},
+		{Kind: tDirectiveArgument, Data: "Second Argument"},
+		{Kind: tRaw, Data: "\n\t</body>\n</html>\n"},
+		{Kind: tEOF, Data: ""},
+	}
+
+	for _, expect := range expectedList {
+		token, err := lexer.nextToken()
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+}
+
+const strongMode = `<html>
+	<body>
+		@!derive template.shpp.in with "Second
+Argument"@
+	</body>
+</html>
+`
+
+func TestNextToken_StrongMode(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(strongMode)
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	var expectedList = []Token{
+		{Kind: tPreambleEnd, Data: ""},
+		{Kind: tRaw, Data: "<html>\n\t<body>\n\t\t"},
+		{Kind: tDirectiveName, Data: "derive"},
+		{Kind: tDirectiveArgument, Data: "template.shpp.in"},
+		{Kind: tDirectiveArgument, Data: "with"},
+		{Kind: tDirectiveArgument, Data: "Second Argument"},
+		{Kind: tRaw, Data: "\n\t</body>\n</html>\n"},
+		{Kind: tEOF, Data: ""},
+	}
+
+	for _, expect := range expectedList {
+		token, err := lexer.nextToken()
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+}
+
 /* parseDirectiveArgument */
 
 func TestParseDirectiveArgument_StartEOF(t *testing.T) {
