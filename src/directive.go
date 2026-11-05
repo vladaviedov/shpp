@@ -417,7 +417,11 @@ func resolveFileDir(state *State) string {
 	case frRoot:
 		return opts.Root
 	case frParent:
-		return state.ParentFileDir
+		if state.IsChild {
+			return state.ParentFileDir
+		} else {
+			return state.FileDir
+		}
 	}
 
 	panic("invalil file resolver state")

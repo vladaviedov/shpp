@@ -2,6 +2,7 @@
 
 [![Build](https://github.com/vladaviedov/shpp/actions/workflows/build.yml/badge.svg)](https://github.com/vladaviedov/shpp/actions/workflows/build.yml)
 [![Test](https://github.com/vladaviedov/shpp/actions/workflows/test.yml/badge.svg)](https://github.com/vladaviedov/shpp/actions/workflows/test.yml)
+
 [Coverage Report](https://vladaviedov.github.io/shpp/)
 
 Pre-processor for writing pure HTML websites.
