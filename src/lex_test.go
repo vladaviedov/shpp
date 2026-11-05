@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+/* newLexer */
+
 func TestNewLexer_InvalidStream(t *testing.T) {
 	assert := assert.New(t)
 	errStr := "mock error"
@@ -53,6 +55,8 @@ const onlyRaw = `<html>
 	<body></body>
 </html>
 `
+
+/* nextToken */
 
 func TestNextToken_OnlyRaw(t *testing.T) {
 	assert := assert.New(t)
@@ -256,6 +260,268 @@ func TestNextToken_ClosedDirectives(t *testing.T) {
 		}
 		assert.Equal(expect, token)
 	}
+}
+
+/* parseDirectiveArgument */
+
+func TestParseDirectiveArgument_StartEOF(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(" ")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	_, err = lexer.parseDirectiveArgument()
+	assert.NotNil(err)
+	assert.Contains(err.Error(), io.EOF.Error())
+}
+
+func TestParseDirectiveArgument_Literal(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader(" test1 test2\n")
+	reader2 := strings.NewReader(" test1 test2@")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+
+	arg, err := lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("test1", arg)
+	arg, err = lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("test2", arg)
+
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("test1", arg)
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("test2", arg)
+}
+
+func TestParseDirectiveArgument_Quotes(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader(" double quotes \"double quotes\"\n")
+	reader2 := strings.NewReader(" single quotes 'single quotes'\n")
+	reader3 := strings.NewReader(" \"smushed\"\"double\"\n")
+	reader4 := strings.NewReader(" 'smushed''single'\n")
+	reader5 := strings.NewReader(" 'smushed'\"both\"\n")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+	lexer3, err := newLexer(reader3)
+	assert.Nil(err)
+	lexer4, err := newLexer(reader4)
+	assert.Nil(err)
+	lexer5, err := newLexer(reader5)
+	assert.Nil(err)
+
+	arg, err := lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("double", arg)
+	arg, err = lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("quotes", arg)
+	arg, err = lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("double quotes", arg)
+
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("single", arg)
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("quotes", arg)
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("single quotes", arg)
+
+	arg, err = lexer3.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("smusheddouble", arg)
+
+	arg, err = lexer4.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("smushedsingle", arg)
+
+	arg, err = lexer5.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("smushedboth", arg)
+}
+
+func TestParseDirectiveArgument_OpenQuotes(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader(" \"double\n")
+	reader2 := strings.NewReader(" 'single\n")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+
+	_, err = lexer1.parseDirectiveArgument()
+	assert.NotNil(err)
+
+	_, err = lexer2.parseDirectiveArgument()
+	assert.NotNil(err)
+}
+
+func TestParseDirectiveArgument_ExtraWhitespace(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(" test1  test2\n")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	arg, err := lexer.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("test1", arg)
+	arg, err = lexer.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("test2", arg)
+}
+
+func TestParseDirectiveArgument_Empty(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(" \n")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	arg, err := lexer.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("", arg)
+}
+
+func TestParseDirectiveArgument_Variables(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader(" {test}\n")
+	reader2 := strings.NewReader(" {test1}{test2}\n")
+	reader3 := strings.NewReader(" {1badtest}\n")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+	lexer3, err := newLexer(reader3)
+	assert.Nil(err)
+
+	arg, err := lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("{test}", arg)
+
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("{test1}{test2}", arg)
+
+	_, err = lexer3.parseDirectiveArgument()
+	assert.NotNil(err)
+}
+
+func TestParseDirectiveArgument_GoodEscapes(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader(` \" \' \\` + "\n")
+	reader2 := strings.NewReader(` "\"" '\'' "\\" '\\'` + "\n")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+
+	arg, err := lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`"`, arg)
+	arg, err = lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`'`, arg)
+	arg, err = lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`\`, arg)
+
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`"`, arg)
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`'`, arg)
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`\`, arg)
+	arg, err = lexer2.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`\`, arg)
+}
+
+func TestParseDirectiveArgument_BadEscapes(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader(" \\ \n")
+	reader2 := strings.NewReader(" \\\t\n")
+	reader3 := strings.NewReader(" \\\n\n")
+	reader4 := strings.NewReader(` "\'" '\"' \a` + "\n")
+	reader5 := strings.NewReader(` \`)
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+	lexer3, err := newLexer(reader3)
+	assert.Nil(err)
+	lexer4, err := newLexer(reader4)
+	assert.Nil(err)
+	lexer5, err := newLexer(reader5)
+	assert.Nil(err)
+
+	_, err = lexer1.parseDirectiveArgument()
+	assert.NotNil(err)
+
+	_, err = lexer2.parseDirectiveArgument()
+	assert.NotNil(err)
+
+	_, err = lexer3.parseDirectiveArgument()
+	assert.NotNil(err)
+
+	arg, err := lexer4.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`\'`, arg)
+	arg, err = lexer4.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`\"`, arg)
+	arg, err = lexer4.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`\a`, arg)
+
+	_, err = lexer5.parseDirectiveArgument()
+	assert.NotNil(err)
+}
+
+func TestParseDirectiveArgument_EndEOF(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(" test")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	_, err = lexer.parseDirectiveArgument()
+	assert.NotNil(err)
+	assert.Contains(err.Error(), io.EOF.Error())
+}
+
+/* parseIdentifier */
+
+func TestParseIdentifier_StartEOF(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader("{")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	_, err = lexer.parseIdentifier()
+	assert.NotNil(err)
+	assert.Contains(err.Error(), io.EOF.Error())
 }
 
 func TestParseIdentifier_Unterminated(t *testing.T) {
