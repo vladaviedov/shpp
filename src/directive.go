@@ -31,6 +31,7 @@ const (
 	dPandoc
 	dRun
 	dManage
+	dInterp
 )
 
 type DirectiveDescription struct {
@@ -56,6 +57,7 @@ var directiveDict = map[string]DirectiveDescription{
 	"pandoc":  {Kind: dPandoc, RequiredArgs: 1, OptionalArgs: 1},
 	"run":     {Kind: dRun, RequiredArgs: 1, OptionalArgs: ddUnlimited},
 	"manage":  {Kind: dManage, RequiredArgs: 1, OptionalArgs: 0},
+	"interp":  {Kind: dInterp, RequiredArgs: 0, OptionalArgs: ddUnlimited},
 }
 
 var inverseMap = map[DirectiveKind]string{
@@ -73,6 +75,7 @@ var inverseMap = map[DirectiveKind]string{
 	dPandoc:  "pandoc",
 	dRun:     "run",
 	dManage:  "manage",
+	dInterp:  "interp",
 }
 
 var scriptModifierMap = map[string]AssetKind{
@@ -271,7 +274,6 @@ func evalInBody(directive *Directive, state *State) error {
 
 		return state.Emitter.writeIM(result)
 	case dManage:
-		// TODO: implement
 		if !opts.ShacInput {
 			fmt.Fprintf(os.Stderr, "warning: @manage ignored (shac integration not enabled)\n")
 
@@ -281,6 +283,8 @@ func evalInBody(directive *Directive, state *State) error {
 
 		state.Assets = append(state.Assets, createAsset(aBinary, state.FileDir, directive.Arguments[0]))
 		return state.Emitter.writeIM("@" + strconv.Itoa(len(state.Assets)-1) + "@")
+	case dInterp:
+		return state.Emitter.writeIM(strings.Join(directive.Arguments, " "))
 	default:
 		return fmt.Errorf("syntax error: '@%s' not allowed in body", inverseMap[directive.Kind])
 	}
