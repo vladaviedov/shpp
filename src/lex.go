@@ -122,7 +122,9 @@ func (s *Lexer) nextToken() (Token, error) {
 				// Check line continuation
 				if next == '\n' {
 					s.Stream.Discard(1)
+					break
 				}
+				fallthrough
 			default:
 				// Parse argument
 				arg, err := s.parseDirectiveArgument()
@@ -315,6 +317,11 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 					parsed.WriteRune('\\')
 				}
 				parsed.WriteRune(s.Head)
+			case '@':
+				if state != qNone {
+					parsed.WriteRune('\\')
+				}
+				parsed.WriteRune('@')
 			case '\\':
 				parsed.WriteRune(s.Head)
 			case ' ':

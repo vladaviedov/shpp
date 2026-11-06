@@ -262,6 +262,44 @@ func TestNextToken_ClosedDirectives(t *testing.T) {
 	}
 }
 
+const withEscapes = `<html>
+	<body>
+		@run echo \@ \" \' \\
+	</body>
+</html>
+`
+
+func TestNextToken_WithEscapes(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(withEscapes)
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	var expectedList = []Token{
+		{Kind: tPreambleEnd, Data: ""},
+		{Kind: tRaw, Data: "<html>\n\t<body>\n\t\t"},
+		{Kind: tDirectiveName, Data: "run"},
+		{Kind: tDirectiveArgument, Data: "echo"},
+		{Kind: tDirectiveArgument, Data: "@"},
+		{Kind: tDirectiveArgument, Data: "\""},
+		{Kind: tDirectiveArgument, Data: "'"},
+		{Kind: tDirectiveArgument, Data: "\\"},
+		{Kind: tRaw, Data: "\n\t</body>\n</html>\n"},
+		{Kind: tEOF, Data: ""},
+	}
+
+	for _, expect := range expectedList {
+		token, err := lexer.nextToken()
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+}
+
 const multilineDirective = `<html>
 	<body>
 		@derive template.shpp.in \
@@ -499,7 +537,7 @@ func TestParseDirectiveArgument_Variables(t *testing.T) {
 
 func TestParseDirectiveArgument_GoodEscapes(t *testing.T) {
 	assert := assert.New(t)
-	reader1 := strings.NewReader(`\" \' \\` + "\n")
+	reader1 := strings.NewReader(`\" \' \\ \@` + "\n")
 	reader2 := strings.NewReader(`"\"" '\'' "\\" '\\'` + "\n")
 
 	lexer1, err := newLexer(reader1)
@@ -516,6 +554,9 @@ func TestParseDirectiveArgument_GoodEscapes(t *testing.T) {
 	arg, err = lexer1.parseDirectiveArgument()
 	assert.Nil(err)
 	assert.Equal(`\`, arg)
+	arg, err = lexer1.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal(`@`, arg)
 
 	arg, err = lexer2.parseDirectiveArgument()
 	assert.Nil(err)
