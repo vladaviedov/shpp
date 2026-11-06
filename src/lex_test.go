@@ -430,8 +430,8 @@ func TestParseDirectiveArgument_Quotes(t *testing.T) {
 
 func TestParseDirectiveArgument_OpenQuotes(t *testing.T) {
 	assert := assert.New(t)
-	reader1 := strings.NewReader(" \"double\n")
-	reader2 := strings.NewReader(" 'single\n")
+	reader1 := strings.NewReader("\"double\n")
+	reader2 := strings.NewReader("'single\n")
 
 	lexer1, err := newLexer(reader1)
 	assert.Nil(err)
@@ -447,7 +447,7 @@ func TestParseDirectiveArgument_OpenQuotes(t *testing.T) {
 
 func TestParseDirectiveArgument_ExtraWhitespace(t *testing.T) {
 	assert := assert.New(t)
-	reader := strings.NewReader(" test1  test2\n")
+	reader := strings.NewReader("test1  test2\n")
 
 	lexer, err := newLexer(reader)
 	assert.Nil(err)
@@ -462,7 +462,7 @@ func TestParseDirectiveArgument_ExtraWhitespace(t *testing.T) {
 
 func TestParseDirectiveArgument_Empty(t *testing.T) {
 	assert := assert.New(t)
-	reader := strings.NewReader(" \n")
+	reader := strings.NewReader("\n")
 
 	lexer, err := newLexer(reader)
 	assert.Nil(err)
@@ -474,9 +474,9 @@ func TestParseDirectiveArgument_Empty(t *testing.T) {
 
 func TestParseDirectiveArgument_Variables(t *testing.T) {
 	assert := assert.New(t)
-	reader1 := strings.NewReader(" {test}\n")
-	reader2 := strings.NewReader(" {test1}{test2}\n")
-	reader3 := strings.NewReader(" {1badtest}\n")
+	reader1 := strings.NewReader("{test}\n")
+	reader2 := strings.NewReader("{test1}{test2}\n")
+	reader3 := strings.NewReader("{1badtest}\n")
 
 	lexer1, err := newLexer(reader1)
 	assert.Nil(err)
@@ -499,8 +499,8 @@ func TestParseDirectiveArgument_Variables(t *testing.T) {
 
 func TestParseDirectiveArgument_GoodEscapes(t *testing.T) {
 	assert := assert.New(t)
-	reader1 := strings.NewReader(` \" \' \\` + "\n")
-	reader2 := strings.NewReader(` "\"" '\'' "\\" '\\'` + "\n")
+	reader1 := strings.NewReader(`\" \' \\` + "\n")
+	reader2 := strings.NewReader(`"\"" '\'' "\\" '\\'` + "\n")
 
 	lexer1, err := newLexer(reader1)
 	assert.Nil(err)
@@ -533,11 +533,11 @@ func TestParseDirectiveArgument_GoodEscapes(t *testing.T) {
 
 func TestParseDirectiveArgument_BadEscapes(t *testing.T) {
 	assert := assert.New(t)
-	reader1 := strings.NewReader(" \\ \n")
-	reader2 := strings.NewReader(" \\\t\n")
-	reader3 := strings.NewReader(" \\\n\n")
-	reader4 := strings.NewReader(` "\'" '\"' \a` + "\n")
-	reader5 := strings.NewReader(` \`)
+	reader1 := strings.NewReader("\\ \n")
+	reader2 := strings.NewReader("\\\t\n")
+	reader3 := strings.NewReader("\\\n\n")
+	reader4 := strings.NewReader(`"\'" '\"' \a` + "\n")
+	reader5 := strings.NewReader(`\`)
 
 	lexer1, err := newLexer(reader1)
 	assert.Nil(err)
@@ -575,7 +575,7 @@ func TestParseDirectiveArgument_BadEscapes(t *testing.T) {
 
 func TestParseDirectiveArgument_EndEOF(t *testing.T) {
 	assert := assert.New(t)
-	reader := strings.NewReader(" test")
+	reader := strings.NewReader("test")
 
 	lexer, err := newLexer(reader)
 	assert.Nil(err)
