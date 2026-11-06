@@ -287,6 +287,7 @@ func evalInBody(directive *Directive, state *State) error {
 	case dRun:
 		if !opts.ShellEscape {
 			fmt.Fprintf(os.Stderr, "warning: @run ignored (shell escape is disabled)\n")
+			break
 		}
 
 		result, err := runSystemCommand(strings.Join(directive.Arguments, " "))
