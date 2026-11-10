@@ -228,8 +228,11 @@ func (s *Lexer) parseDirectiveName() (string, error) {
 	}
 
 	for s.Head != ' ' && s.Head != '\t' && s.Head != '\n' {
-		if !unicode.IsLetter(s.Head) && s.Head != '!' {
-			return "", fmt.Errorf("failed to lex directive: invalid character %q", s.Head)
+		if !unicode.IsLetter(s.Head) {
+			// '!' in the zeroth index is okay
+			if !(parsed.Len() == 0 && s.Head == '!') {
+				return "", fmt.Errorf("failed to lex directive: invalid character %q", s.Head)
+			}
 		}
 		parsed.WriteRune(s.Head)
 
