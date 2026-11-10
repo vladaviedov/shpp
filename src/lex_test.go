@@ -391,8 +391,8 @@ func TestParseDirectiveArgument_StartEOF(t *testing.T) {
 
 func TestParseDirectiveArgument_Literal(t *testing.T) {
 	assert := assert.New(t)
-	reader1 := strings.NewReader(" test1 test2\n")
-	reader2 := strings.NewReader(" test1 test2@")
+	reader1 := strings.NewReader("test1 test2\n")
+	reader2 := strings.NewReader("test1 test2@")
 
 	lexer1, err := newLexer(reader1)
 	assert.Nil(err)
@@ -416,11 +416,12 @@ func TestParseDirectiveArgument_Literal(t *testing.T) {
 
 func TestParseDirectiveArgument_Quotes(t *testing.T) {
 	assert := assert.New(t)
-	reader1 := strings.NewReader(" double quotes \"double quotes\"\n")
-	reader2 := strings.NewReader(" single quotes 'single quotes'\n")
-	reader3 := strings.NewReader(" \"smushed\"\"double\"\n")
-	reader4 := strings.NewReader(" 'smushed''single'\n")
-	reader5 := strings.NewReader(" 'smushed'\"both\"\n")
+	reader1 := strings.NewReader("double quotes \"double quotes\"\n")
+	reader2 := strings.NewReader("single quotes 'single quotes'\n")
+	reader3 := strings.NewReader("\"smushed\"\"double\"\n")
+	reader4 := strings.NewReader("'smushed''single'\n")
+	reader5 := strings.NewReader("'smushed'\"both\"\n")
+	reader6 := strings.NewReader("\"'\" '\"'\n")
 
 	lexer1, err := newLexer(reader1)
 	assert.Nil(err)
@@ -431,6 +432,8 @@ func TestParseDirectiveArgument_Quotes(t *testing.T) {
 	lexer4, err := newLexer(reader4)
 	assert.Nil(err)
 	lexer5, err := newLexer(reader5)
+	assert.Nil(err)
+	lexer6, err := newLexer(reader6)
 	assert.Nil(err)
 
 	arg, err := lexer1.parseDirectiveArgument()
@@ -464,6 +467,13 @@ func TestParseDirectiveArgument_Quotes(t *testing.T) {
 	arg, err = lexer5.parseDirectiveArgument()
 	assert.Nil(err)
 	assert.Equal("smushedboth", arg)
+
+	arg, err = lexer6.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("'", arg)
+	arg, err = lexer6.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("\"", arg)
 }
 
 func TestParseDirectiveArgument_OpenQuotes(t *testing.T) {
