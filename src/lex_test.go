@@ -850,3 +850,25 @@ func TestParseIdentifier_SpecialChars(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(".line", ident)
 }
+
+/* advanceHead */
+
+func TestAdvanceHead_StrongModeReplacement(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader("1\n1")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+	assert.Equal('1', lexer.Head)
+
+	lexer.FlagDirective = true
+	lexer.FlagStrong = true
+
+	err = lexer.advanceHead()
+	assert.Nil(err)
+	assert.Equal(' ', lexer.Head)
+
+	err = lexer.advanceHead()
+	assert.Nil(err)
+	assert.Equal('1', lexer.Head)
+}
