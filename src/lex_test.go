@@ -254,80 +254,29 @@ func TestNextToken_NoBody(t *testing.T) {
 	}
 }
 
-const directiveEof = `@ign`
-
-func TestNextToken_DirectiveEOF(t *testing.T) {
-	assert := assert.New(t)
-	reader := strings.NewReader(directiveEof)
-
-	lexer, err := newLexer(reader)
-	assert.Nil(err)
-
-	var expectedList = []Token{
-		{Kind: tError, Data: ""},
-	}
-
-	for _, expect := range expectedList {
-		token, err := lexer.nextToken()
-
-		if expect.Kind == tError {
-			assert.NotNil(err)
-		} else {
-			assert.Nil(err)
-		}
-		assert.Equal(expect, token)
-	}
-}
-
-const argStartEof = `@ignore`
-
-func TestNextToken_ArgStartEOF(t *testing.T) {
-	assert := assert.New(t)
-	reader := strings.NewReader(argStartEof)
-
-	lexer, err := newLexer(reader)
-	assert.Nil(err)
-
-	var expectedList = []Token{
-		{Kind: tError, Data: ""},
-	}
-
-	for _, expect := range expectedList {
-		token, err := lexer.nextToken()
-
-		if expect.Kind == tError {
-			assert.NotNil(err)
-		} else {
-			assert.Nil(err)
-		}
-		assert.Equal(expect, token)
-	}
-}
-
 const invalidDirective = `@1gnore
+`
+
+const invalidArgument = `@derive {2test}
 `
 
 func TestNextToken_InvalidDirective(t *testing.T) {
 	assert := assert.New(t)
-	reader := strings.NewReader(invalidDirective)
+	reader1 := strings.NewReader(invalidDirective)
+	reader2 := strings.NewReader(invalidArgument)
 
-	lexer, err := newLexer(reader)
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
 	assert.Nil(err)
 
-	var expectedList = []Token{
-		{Kind: tError, Data: ""},
-	}
+	_, err = lexer1.nextToken()
+	assert.NotNil(err)
 
-	for _, expect := range expectedList {
-		token, err := lexer.nextToken()
-
-		if expect.Kind == tError {
-			assert.NotNil(err)
-		} else {
-			assert.Nil(err)
-		}
-		assert.Equal(expect, token)
-	}
+	_, err = lexer2.nextToken()
+	assert.Nil(err)
+	_, err = lexer2.nextToken()
+	assert.NotNil(err)
 }
 
 const closedDirectives = `<html>
@@ -478,6 +427,55 @@ func TestNextToken_StrongMode(t *testing.T) {
 
 	for _, expect := range expectedList {
 		token, err := lexer.nextToken()
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+}
+
+const escapedAtSignEOF = `<html>@@`
+
+const emptyBufferAtEOF = `<html></html>@nop@`
+
+func TestNextToken_EsotericEOFs(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader(escapedAtSignEOF)
+	reader2 := strings.NewReader(emptyBufferAtEOF)
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+
+	var expectedList1 = []Token{
+		{Kind: tPreambleEnd, Data: ""},
+		{Kind: tRaw, Data: "<html>"},
+		{Kind: tError, Data: ""},
+	}
+	var expectedList2 = []Token{
+		{Kind: tPreambleEnd, Data: ""},
+		{Kind: tRaw, Data: "<html></html>"},
+		{Kind: tDirectiveName, Data: "nop"},
+		{Kind: tEOF, Data: ""},
+	}
+
+	for _, expect := range expectedList1 {
+		token, err := lexer1.nextToken()
+
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+
+	for _, expect := range expectedList2 {
+		token, err := lexer2.nextToken()
+
 		if expect.Kind == tError {
 			assert.NotNil(err)
 		} else {
