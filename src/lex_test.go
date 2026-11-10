@@ -1,7 +1,7 @@
 /**
  * @file lex_test.go
  * @author Vladyslav Aviedov <vladaviedov at protonmail dot com>
- * @version 0.9.0
+ * @version 0.9.1
  * @date 2026
  * @license GPLv3.0
  * @brief File scanner and token lexer.

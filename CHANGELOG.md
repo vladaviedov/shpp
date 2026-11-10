@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+- Fix shell escape not being enforced
+- Fix miscellaneous lexing errors uncovered from testing
+- Improve testing
+
 ## 0.9.0
 
 - New directives
