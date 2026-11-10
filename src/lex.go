@@ -159,10 +159,15 @@ func (s *Lexer) nextToken() (Token, error) {
 
 				// Null directive - escaped @
 				if dir == "" {
-					err = s.advanceHead()
-					if err != nil {
-						return tokenError, err
+					// Advance if terminated by explicit @
+					if s.Head == '@' {
+						err = s.advanceHead()
+						if err != nil {
+							return tokenError, err
+						}
 					}
+
+					s.FlagDirective = false
 					return tokenEscape, nil
 				}
 
@@ -227,7 +232,7 @@ func (s *Lexer) parseDirectiveName() (string, error) {
 		return "", err
 	}
 
-	for s.Head != ' ' && s.Head != '\t' && s.Head != '\n' {
+	for s.Head != ' ' && s.Head != '\t' && s.Head != '\n' && s.Head != '@' {
 		if !unicode.IsLetter(s.Head) {
 			// '!' in the zeroth index is okay
 			if !(parsed.Len() == 0 && s.Head == '!') {

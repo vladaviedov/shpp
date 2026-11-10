@@ -157,6 +157,42 @@ func TestNextToken_BodyDirectives(t *testing.T) {
 	}
 }
 
+const nullDirective = `<html>
+	<body>
+		This is a normal @@ which is escaped
+		This is also a normal @
+	</body>
+</html>
+`
+
+func TestNextToken_NullDirective(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(nullDirective)
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	var expectedList = []Token{
+		{Kind: tPreambleEnd, Data: ""},
+		{Kind: tRaw, Data: "<html>\n\t<body>\n\t\tThis is a normal "},
+		{Kind: tRaw, Data: "@"},
+		{Kind: tRaw, Data: " which is escaped\n\t\tThis is also a normal "},
+		{Kind: tRaw, Data: "@"},
+		{Kind: tRaw, Data: "\n\t</body>\n</html>\n"},
+		{Kind: tEOF, Data: ""},
+	}
+
+	for _, expect := range expectedList {
+		token, err := lexer.nextToken()
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+}
+
 const multiArgumentDirectives = `<html>
 	@derive template.shpp.in arg1 arg2
 </html>
@@ -203,6 +239,56 @@ func TestNextToken_NoBody(t *testing.T) {
 
 	var expectedList = []Token{
 		{Kind: tDirectiveName, Data: "ignore"},
+		{Kind: tError, Data: ""},
+	}
+
+	for _, expect := range expectedList {
+		token, err := lexer.nextToken()
+
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+}
+
+const directiveEof = `@ign`
+
+func TestNextToken_DirectiveEOF(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(directiveEof)
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	var expectedList = []Token{
+		{Kind: tError, Data: ""},
+	}
+
+	for _, expect := range expectedList {
+		token, err := lexer.nextToken()
+
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+}
+
+const argStartEof = `@ignore`
+
+func TestNextToken_ArgStartEOF(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(argStartEof)
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	var expectedList = []Token{
 		{Kind: tError, Data: ""},
 	}
 
