@@ -375,6 +375,106 @@ func TestNextToken_StrongMode(t *testing.T) {
 	}
 }
 
+/* parseDirectiveName */
+
+func TestParseDirectiveName_StartEOF(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader("\n")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	_, err = lexer.parseDirectiveName()
+	assert.NotNil(err)
+	assert.Contains(err.Error(), io.EOF.Error())
+}
+
+func TestParseDirectiveName_NormalDirective(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader("@include ")
+	reader2 := strings.NewReader("@ignore\n")
+	reader3 := strings.NewReader("@derive\t")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+	lexer3, err := newLexer(reader3)
+	assert.Nil(err)
+
+	arg, err := lexer1.parseDirectiveName()
+	assert.Nil(err)
+	assert.Equal("include", arg)
+
+	arg, err = lexer2.parseDirectiveName()
+	assert.Nil(err)
+	assert.Equal("ignore", arg)
+
+	arg, err = lexer3.parseDirectiveName()
+	assert.Nil(err)
+	assert.Equal("derive", arg)
+}
+
+func TestParseDirectiveName_StrongMode(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader("@!derive ")
+	reader2 := strings.NewReader("@!manage ")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+
+	arg, err := lexer1.parseDirectiveName()
+	assert.Nil(err)
+	assert.Equal("!derive", arg)
+
+	arg, err = lexer2.parseDirectiveName()
+	assert.Nil(err)
+	assert.Equal("!manage", arg)
+}
+
+func TestParseDirectiveName_BadCharacters(t *testing.T) {
+	assert := assert.New(t)
+	reader1 := strings.NewReader("@1nclude\n")
+	reader2 := strings.NewReader("@inc1ude\n")
+	reader3 := strings.NewReader("@inc;ude\n")
+	reader4 := strings.NewReader("@inc!ude\n")
+
+	lexer1, err := newLexer(reader1)
+	assert.Nil(err)
+	lexer2, err := newLexer(reader2)
+	assert.Nil(err)
+	lexer3, err := newLexer(reader3)
+	assert.Nil(err)
+	lexer4, err := newLexer(reader4)
+	assert.Nil(err)
+
+	_, err = lexer1.parseDirectiveName()
+	assert.NotNil(err)
+
+	_, err = lexer2.parseDirectiveName()
+	assert.NotNil(err)
+
+	_, err = lexer3.parseDirectiveName()
+	assert.NotNil(err)
+
+	_, err = lexer4.parseDirectiveName()
+	assert.NotNil(err)
+}
+
+func TestParseDirectiveName_EndEOF(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader("@derive")
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	_, err = lexer.parseDirectiveName()
+	assert.NotNil(err)
+	assert.Contains(err.Error(), io.EOF.Error())
+}
+
 /* parseDirectiveArgument */
 
 func TestParseDirectiveArgument_StartEOF(t *testing.T) {
