@@ -267,18 +267,14 @@ func (s *Lexer) parseDirectiveArgument() (string, error) {
 				parsed.WriteRune(s.Head)
 			}
 		case '{':
-			if state == qNone {
-				ident, err := s.parseIdentifier()
-				if err != nil {
-					return "", err
-				}
-
-				parsed.WriteRune('{')
-				parsed.WriteString(ident)
-				parsed.WriteRune('}')
-			} else {
-				parsed.WriteRune(s.Head)
+			ident, err := s.parseIdentifier()
+			if err != nil {
+				return "", err
 			}
+
+			parsed.WriteRune('{')
+			parsed.WriteString(ident)
+			parsed.WriteRune('}')
 		case ' ':
 			// Ignore WS if argument is empty
 			if parsed.Len() == 0 {
