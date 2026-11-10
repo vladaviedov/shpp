@@ -304,6 +304,32 @@ func TestNextToken_ArgStartEOF(t *testing.T) {
 	}
 }
 
+const invalidDirective = `@1gnore
+`
+
+func TestNextToken_InvalidDirective(t *testing.T) {
+	assert := assert.New(t)
+	reader := strings.NewReader(invalidDirective)
+
+	lexer, err := newLexer(reader)
+	assert.Nil(err)
+
+	var expectedList = []Token{
+		{Kind: tError, Data: ""},
+	}
+
+	for _, expect := range expectedList {
+		token, err := lexer.nextToken()
+
+		if expect.Kind == tError {
+			assert.NotNil(err)
+		} else {
+			assert.Nil(err)
+		}
+		assert.Equal(expect, token)
+	}
+}
+
 const closedDirectives = `<html>
 	<body>
 		Today is @run date +\"%Y-%m-%d\"@ and the time is
