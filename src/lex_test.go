@@ -524,13 +524,22 @@ func TestParseDirectiveArgument_Variables(t *testing.T) {
 	assert := assert.New(t)
 	reader1 := strings.NewReader("{test}\n")
 	reader2 := strings.NewReader("{test1}{test2}\n")
-	reader3 := strings.NewReader("{1badtest}\n")
+	reader3 := strings.NewReader("\"{test} {test2}\"\n")
+	reader4 := strings.NewReader("\"{\"\n")
+	reader5 := strings.NewReader("'{'\n")
+	reader6 := strings.NewReader("{1badtest}\n")
 
 	lexer1, err := newLexer(reader1)
 	assert.Nil(err)
 	lexer2, err := newLexer(reader2)
 	assert.Nil(err)
 	lexer3, err := newLexer(reader3)
+	assert.Nil(err)
+	lexer4, err := newLexer(reader4)
+	assert.Nil(err)
+	lexer5, err := newLexer(reader5)
+	assert.Nil(err)
+	lexer6, err := newLexer(reader6)
 	assert.Nil(err)
 
 	arg, err := lexer1.parseDirectiveArgument()
@@ -541,7 +550,17 @@ func TestParseDirectiveArgument_Variables(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal("{test1}{test2}", arg)
 
-	_, err = lexer3.parseDirectiveArgument()
+	arg, err = lexer3.parseDirectiveArgument()
+	assert.Nil(err)
+	assert.Equal("{test} {test2}", arg)
+
+	_, err = lexer4.parseDirectiveArgument()
+	assert.NotNil(err)
+
+	_, err = lexer5.parseDirectiveArgument()
+	assert.NotNil(err)
+
+	_, err = lexer6.parseDirectiveArgument()
 	assert.NotNil(err)
 }
 
