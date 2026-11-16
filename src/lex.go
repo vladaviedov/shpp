@@ -97,19 +97,6 @@ func (s *Lexer) nextToken() (Token, error) {
 
 	for {
 		if s.FlagDirective {
-			// Prepare lookahead
-			var next byte
-			nextRes, err := s.Stream.Peek(1)
-			if err != nil {
-				if err != io.EOF {
-					return tokenError, fmt.Errorf("failed to read stream: %w", err)
-				}
-
-				next = '\n'
-			} else {
-				next = nextRes[0]
-			}
-
 			switch s.Head {
 			case ' ':
 			case '\t':
@@ -132,6 +119,19 @@ func (s *Lexer) nextToken() (Token, error) {
 				s.FlagDirective = false
 				return tokenDirectiveEnd, nil
 			case '\\':
+				// Prepare lookahead
+				var next byte
+				nextRes, err := s.Stream.Peek(1)
+				if err != nil {
+					if err != io.EOF {
+						return tokenError, fmt.Errorf("failed to read stream: %w", err)
+					}
+
+					next = '\n'
+				} else {
+					next = nextRes[0]
+				}
+
 				// Check line continuation
 				if next == '\n' {
 					err := s.advanceHead()
