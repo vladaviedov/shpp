@@ -57,7 +57,8 @@ type Lexer struct {
 	Stream *bufio.Reader
 
 	// Current character
-	Head rune
+	Head       rune
+	LineNumber uint
 
 	// State flags
 	FlagPreamble  bool
@@ -76,6 +77,7 @@ func newLexer(source io.Reader) (*Lexer, error) {
 	s := &Lexer{
 		Stream:        stream,
 		Head:          head,
+		LineNumber:    1,
 		FlagPreamble:  true,
 		FlagDirective: false,
 		FlagEOF:       false,
@@ -121,7 +123,10 @@ func (s *Lexer) nextToken() (Token, error) {
 			case '\\':
 				// Check line continuation
 				if next == '\n' {
-					s.Stream.Discard(1)
+					err := s.advanceHead()
+					if err != nil {
+						return tokenError, err
+					}
 					break
 				}
 				fallthrough
@@ -386,6 +391,9 @@ func (s *Lexer) advanceHead() error {
 		return fmt.Errorf("failed to read stream: %w", err)
 	}
 
+	if val == '\n' {
+		s.LineNumber++
+	}
 	if s.FlagDirective && s.FlagStrong && val == '\n' {
 		val = ' '
 	}
