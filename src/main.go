@@ -42,7 +42,7 @@ func main() {
 	parser := flags.NewParser(&opts, flags.Default^flags.HelpFlag^flags.PrintErrors)
 	args, err := parser.Parse()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse arguments: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "[shpp] failed to parse arguments: %s\n", err.Error())
 		os.Exit(2)
 	}
 
@@ -61,7 +61,7 @@ func main() {
 	} else {
 		outStream, err = os.Create(opts.Output)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to open output file: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "[shpp] failed to open output file: %s\n", err.Error())
 			os.Exit(1)
 		}
 	}
@@ -76,7 +76,7 @@ func main() {
 	var inWorkingDir string
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to fetch current directory: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "[shpp] failed to fetch current directory: %s\n", err.Error())
 		os.Exit(1)
 	}
 
@@ -86,13 +86,13 @@ func main() {
 	} else {
 		inStream, err = os.Open(args[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to open source file: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "[shpp] failed to open source file: %s\n", err.Error())
 			os.Exit(1)
 		}
 
 		inWorkingDir, err = filepath.Abs(path.Dir(args[0]))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to determined working directory: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "[shpp] failed to determine working directory: %s\n", err.Error())
 			os.Exit(1)
 		}
 	}
@@ -113,7 +113,7 @@ func main() {
 
 	err = processFile(inStream, outStream, filename, inWorkingDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "[shpp] %s\n", err.Error())
 		os.Exit(1)
 	}
 }

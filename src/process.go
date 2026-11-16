@@ -30,10 +30,13 @@ type State struct {
 	ArgData  []string
 	Vars     map[string]string
 
-	FileName      string
 	FileDir       string
 	ParentFileDir string
 	PathResolver  FilepathResolver
+
+	FileName    string
+	LineNum     uint
+	TraceLength uint
 
 	IsChild    bool
 	UrlChanged bool
@@ -45,13 +48,15 @@ func processFile(inStream io.Reader, outStream io.Writer, filename string, worki
 	cutName, _ := strings.CutSuffix(filename, ".shpp")
 	state := &State{
 		PageURL:      cutName + ".html",
-		FileName:     filename,
 		FileDir:      workingDir,
 		ArgCount:     0,
 		ArgData:      nil,
 		Emitter:      newEmitter(outStream),
 		Vars:         make(map[string]string),
 		PathResolver: frNormal,
+		FileName:     filename,
+		LineNum:      1,
+		TraceLength:  0,
 	}
 	defer state.Emitter.destroy()
 
@@ -96,6 +101,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 		case tDirectiveArgument:
 			tokenList = append(tokenList, token)
 		case tDirectiveEnd:
+			state.LineNum = lexer.LineNumber
 			err = evaluateDirective(tokenList, state, true)
 			if err != nil {
 				return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber-1, err)
@@ -131,6 +137,7 @@ func processBody(lexer *Lexer, state *State) error {
 		case tDirectiveArgument:
 			tokenList = append(tokenList, token)
 		case tDirectiveEnd:
+			state.LineNum = lexer.LineNumber
 			err = evaluateDirective(tokenList, state, false)
 			if err != nil {
 				return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber-1, err)
@@ -181,7 +188,7 @@ func writeOutput(state *State) error {
 	// Insert stuff into head
 	err = updateHead(state)
 	if err != nil {
-		return fmt.Errorf("%s \n\t-> %w", state.FileName, err)
+		return err
 	}
 
 	// Flush rest of file down

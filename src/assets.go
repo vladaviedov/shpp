@@ -9,6 +9,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -24,15 +25,29 @@ const (
 )
 
 type Asset struct {
-	Kind       AssetKind
-	SourcePath string
+	Kind        AssetKind
+	SourcePath  string
+	TraceInfo   string
+	TraceLength uint
 }
 
-func createAsset(kind AssetKind, fileDir string, path string) Asset {
+func createAsset(kind AssetKind, fileDir string, path string, srcFilename string, srcLineNum uint, traceLen uint) Asset {
 	return Asset{
-		Kind:       kind,
-		SourcePath: convertPath(path, fileDir),
+		Kind:        kind,
+		SourcePath:  convertPath(path, fileDir),
+		TraceInfo:   fmt.Sprintf("%s:%d", srcFilename, srcLineNum),
+		TraceLength: traceLen,
 	}
+}
+
+func updateAssetTrace(asset Asset, srcFilename string, srcLineNum uint) Asset {
+	return Asset{
+		Kind:        asset.Kind,
+		SourcePath:  asset.SourcePath,
+		TraceInfo:   fmt.Sprintf("%s:%d \n\t-> %s", srcFilename, srcLineNum, asset.TraceInfo),
+		TraceLength: asset.TraceLength - 1,
+	}
+
 }
 
 func updateHead(state *State) error {
@@ -78,7 +93,7 @@ func generateStyleTag(asset *Asset, id int) (string, error) {
 	} else {
 		content, err := os.ReadFile(asset.SourcePath)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("%s \n\t-> %w", asset.TraceInfo, err)
 		}
 
 		return `<style>` + string(content) + `</style>`, nil
@@ -95,7 +110,7 @@ func generateScriptTag(asset *Asset, id int, modifier string) (string, error) {
 	} else {
 		content, err := os.ReadFile(asset.SourcePath)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("%s \n\t-> %w", asset.TraceInfo, err)
 		}
 
 		return `<script` + modifier + `>` + string(content) + `</script>`, nil

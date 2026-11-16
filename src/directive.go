@@ -214,7 +214,7 @@ func evalInPreamble(directive *Directive, state *State) error {
 
 		state.PathResolver = resolver
 	case dStyle:
-		asset := createAsset(aStylesheet, state.FileDir, directive.Arguments[0])
+		asset := createAsset(aStylesheet, state.FileDir, directive.Arguments[0], state.FileName, state.LineNum, state.TraceLength)
 		state.Assets = append(state.Assets, asset)
 	case dScript:
 		modifier := ""
@@ -227,7 +227,7 @@ func evalInPreamble(directive *Directive, state *State) error {
 			return fmt.Errorf("syntax error: unknown @script modifier '%s'", modifier)
 		}
 
-		asset := createAsset(scriptKind, state.FileDir, directive.Arguments[0])
+		asset := createAsset(scriptKind, state.FileDir, directive.Arguments[0], state.FileName, state.LineNum, state.TraceLength)
 		state.Assets = append(state.Assets, asset)
 	case dIgnore:
 		state.Ignored = true
@@ -304,7 +304,8 @@ func evalInBody(directive *Directive, state *State) error {
 			return state.Emitter.writeIM(directive.Arguments[0])
 		}
 
-		state.Assets = append(state.Assets, createAsset(aBinary, resolveFileDir(state), directive.Arguments[0]))
+		asset := createAsset(aBinary, resolveFileDir(state), directive.Arguments[0], state.FileName, state.LineNum, state.TraceLength)
+		state.Assets = append(state.Assets, asset)
 		return state.Emitter.writeIM("@" + strconv.Itoa(len(state.Assets)-1) + "@")
 	case dInterp:
 		return state.Emitter.writeIM(strings.Join(directive.Arguments, " "))
@@ -327,7 +328,6 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 	childState := &State{
 		Assets:        state.Assets,
 		PageURL:       state.PageURL,
-		FileName:      filepath,
 		FileDir:       path.Dir(absPath),
 		ArgCount:      uint64(len(withArgs)),
 		ArgData:       withArgs,
@@ -336,6 +336,9 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 		IsChild:       true,
 		ParentFileDir: state.FileDir,
 		PathResolver:  frNormal,
+		FileName:      filepath,
+		LineNum:       1,
+		TraceLength:   state.TraceLength + 1,
 	}
 
 	// Add inclusion marker
@@ -357,6 +360,12 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 	}
 
 	// Copy assets from child
+	for idx, asset := range childState.Assets {
+		if asset.TraceLength == childState.TraceLength {
+			childState.Assets[idx] = updateAssetTrace(asset, state.FileName, state.LineNum)
+		}
+	}
+
 	state.Assets = childState.Assets
 	return nil
 }
@@ -381,13 +390,15 @@ func includePandoc(filepath string, modifier string, state *State) error {
 	childState := &State{
 		Assets:        state.Assets,
 		PageURL:       state.PageURL,
-		FileName:      filepath,
 		FileDir:       path.Dir(absPath),
 		Vars:          state.Vars,
 		Emitter:       state.Emitter,
 		IsChild:       true,
 		ParentFileDir: state.FileDir,
 		PathResolver:  frNormal,
+		FileName:      filepath,
+		LineNum:       1,
+		TraceLength:   state.TraceLength + 1,
 	}
 
 	// Add inclusion marker
@@ -409,7 +420,11 @@ func includePandoc(filepath string, modifier string, state *State) error {
 	}
 
 	// Copy assets from child
-	state.Assets = childState.Assets
+	for idx, asset := range childState.Assets {
+		if asset.TraceLength == childState.TraceLength {
+			childState.Assets[idx] = updateAssetTrace(asset, state.FileName, state.LineNum)
+		}
+	}
 	return nil
 }
 
