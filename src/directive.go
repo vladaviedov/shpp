@@ -327,6 +327,7 @@ func includeCommon(filepath string, state *State, withArgs []string) error {
 	childState := &State{
 		Assets:        state.Assets,
 		PageURL:       state.PageURL,
+		FileName:      filepath,
 		FileDir:       path.Dir(absPath),
 		ArgCount:      uint64(len(withArgs)),
 		ArgData:       withArgs,
@@ -380,6 +381,7 @@ func includePandoc(filepath string, modifier string, state *State) error {
 	childState := &State{
 		Assets:        state.Assets,
 		PageURL:       state.PageURL,
+		FileName:      filepath,
 		FileDir:       path.Dir(absPath),
 		Vars:          state.Vars,
 		Emitter:       state.Emitter,

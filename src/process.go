@@ -11,6 +11,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 type FilepathResolver uint64
@@ -29,6 +30,7 @@ type State struct {
 	ArgData  []string
 	Vars     map[string]string
 
+	FileName      string
 	FileDir       string
 	ParentFileDir string
 	PathResolver  FilepathResolver
@@ -39,9 +41,11 @@ type State struct {
 	Ignored    bool
 }
 
-func processFile(inStream io.Reader, outStream io.Writer, defaultName string, workingDir string) error {
+func processFile(inStream io.Reader, outStream io.Writer, filename string, workingDir string) error {
+	cutName, _ := strings.CutSuffix(filename, ".shpp")
 	state := &State{
-		PageURL:      defaultName + ".html",
+		PageURL:      cutName + ".html",
+		FileName:     filename,
 		FileDir:      workingDir,
 		ArgCount:     0,
 		ArgData:      nil,
@@ -81,7 +85,7 @@ func processFileIM(stream io.Reader, state *State) error {
 func processPreamble(lexer *Lexer, state *State) error {
 	token, err := lexer.nextToken()
 	if err != nil {
-		return err
+		return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 	}
 
 	var tokenList []Token
@@ -91,7 +95,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 			if len(tokenList) != 0 {
 				err = evaluateDirective(tokenList, state, true)
 				if err != nil {
-					return err
+					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 				}
 				tokenList = []Token{}
 			}
@@ -102,7 +106,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 			if len(tokenList) != 0 {
 				err = evaluateDirective(tokenList, state, true)
 				if err != nil {
-					return err
+					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 				}
 				tokenList = []Token{}
 			}
@@ -117,7 +121,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 
 		token, err = lexer.nextToken()
 		if err != nil {
-			return err
+			return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 		}
 	}
 }
@@ -125,7 +129,7 @@ func processPreamble(lexer *Lexer, state *State) error {
 func processBody(lexer *Lexer, state *State) error {
 	token, err := lexer.nextToken()
 	if err != nil {
-		return err
+		return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 	}
 
 	var tokenList []Token
@@ -135,7 +139,7 @@ func processBody(lexer *Lexer, state *State) error {
 			if len(tokenList) != 0 {
 				err = evaluateDirective(tokenList, state, false)
 				if err != nil {
-					return err
+					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 				}
 				tokenList = []Token{}
 			}
@@ -146,7 +150,7 @@ func processBody(lexer *Lexer, state *State) error {
 			if len(tokenList) != 0 {
 				err = evaluateDirective(tokenList, state, false)
 				if err != nil {
-					return err
+					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 				}
 				tokenList = []Token{}
 			}
@@ -155,7 +159,7 @@ func processBody(lexer *Lexer, state *State) error {
 			if len(tokenList) != 0 {
 				err = evaluateDirective(tokenList, state, false)
 				if err != nil {
-					return err
+					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 				}
 				tokenList = []Token{}
 			}
@@ -165,7 +169,7 @@ func processBody(lexer *Lexer, state *State) error {
 
 		token, err = lexer.nextToken()
 		if err != nil {
-			return err
+			return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
 		}
 	}
 }
@@ -183,30 +187,35 @@ func writeOutput(state *State) error {
 	if opts.ShacInput {
 		err := writeShacPreamble(state)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s \n\t-> %w", state.FileName, err)
 		}
 	}
 
 	// Write doctype
 	err := state.Emitter.writeOut("<!DOCTYPE html>")
 	if err != nil {
-		return err
+		return fmt.Errorf("%s \n\t-> %w", state.FileName, err)
 	}
 
 	// Locate start of head
 	err = findHead(state)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s \n\t-> %w", state.FileName, err)
 	}
 
 	// Insert stuff into head
 	err = updateHead(state)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s \n\t-> %w", state.FileName, err)
 	}
 
 	// Flush rest of file down
-	return state.Emitter.flushIM()
+	err = state.Emitter.flushIM()
+	if err != nil {
+		return fmt.Errorf("%s \n\t-> %w", state.FileName, err)
+	}
+
+	return nil
 }
 
 func writeShacPreamble(state *State) error {

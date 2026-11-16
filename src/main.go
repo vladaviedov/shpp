@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/jessevdk/go-flags"
 )
@@ -105,14 +104,14 @@ func main() {
 	}
 
 	// Initial parser state
-	var defaultName string
+	var filename string
 	if opts.Stdin {
-		defaultName = "stdin"
+		filename = "stdin"
 	} else {
-		defaultName, _ = strings.CutSuffix(inStream.Name(), ".shpp")
+		filename = inStream.Name()
 	}
 
-	err = processFile(inStream, outStream, defaultName, inWorkingDir)
+	err = processFile(inStream, outStream, filename, inWorkingDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		os.Exit(1)
