@@ -99,10 +99,13 @@ func TestNextToken_PreambleDirectives(t *testing.T) {
 
 	var expectedList = []Token{
 		{Kind: tDirectiveName, Data: "ignore"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tDirectiveName, Data: "url"},
 		{Kind: tDirectiveArgument, Data: "index.html"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tDirectiveName, Data: "script"},
 		{Kind: tDirectiveArgument, Data: "script.js"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tPreambleEnd, Data: ""},
 		{Kind: tRaw, Data: "<html>\n\t<body></body>\n</html>\n"},
 		{Kind: tEOF, Data: ""},
@@ -139,9 +142,11 @@ func TestNextToken_BodyDirectives(t *testing.T) {
 		{Kind: tRaw, Data: "<html>\n\t<body>\n\t\t"},
 		{Kind: tDirectiveName, Data: "include"},
 		{Kind: tDirectiveArgument, Data: "part.html"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: "\n\t\t"},
 		{Kind: tDirectiveName, Data: "run"},
 		{Kind: tDirectiveArgument, Data: "date"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: "\n\t</body>\n</html>\n"},
 		{Kind: tEOF, Data: ""},
 	}
@@ -212,6 +217,7 @@ func TestNextToken_MultiArgumentDirective(t *testing.T) {
 		{Kind: tDirectiveArgument, Data: "template.shpp.in"},
 		{Kind: tDirectiveArgument, Data: "arg1"},
 		{Kind: tDirectiveArgument, Data: "arg2"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: "\n</html>\n"},
 		{Kind: tEOF, Data: ""},
 	}
@@ -239,6 +245,7 @@ func TestNextToken_NoBody(t *testing.T) {
 
 	var expectedList = []Token{
 		{Kind: tDirectiveName, Data: "ignore"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tError, Data: ""},
 	}
 
@@ -300,14 +307,17 @@ func TestNextToken_ClosedDirectives(t *testing.T) {
 		{Kind: tDirectiveName, Data: "run"},
 		{Kind: tDirectiveArgument, Data: "date"},
 		{Kind: tDirectiveArgument, Data: "+\"%Y-%m-%d\""},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: " and the time is\n\t\t"},
 		{Kind: tDirectiveName, Data: "run"},
 		{Kind: tDirectiveArgument, Data: "date"},
 		{Kind: tDirectiveArgument, Data: "+\"%H:%M:%S\""},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: " in "},
 		{Kind: tDirectiveName, Data: "run"},
 		{Kind: tDirectiveArgument, Data: "date"},
 		{Kind: tDirectiveArgument, Data: "+\"%Z\""},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: " timezone.\n\t</body>\n</html>\n"},
 		{Kind: tEOF, Data: ""},
 	}
@@ -346,6 +356,7 @@ func TestNextToken_WithEscapes(t *testing.T) {
 		{Kind: tDirectiveArgument, Data: "\""},
 		{Kind: tDirectiveArgument, Data: "'"},
 		{Kind: tDirectiveArgument, Data: "\\"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: "\n\t</body>\n</html>\n"},
 		{Kind: tEOF, Data: ""},
 	}
@@ -384,6 +395,7 @@ func TestNextToken_MultilineDirective(t *testing.T) {
 		{Kind: tDirectiveArgument, Data: "template.shpp.in"},
 		{Kind: tDirectiveArgument, Data: "with"},
 		{Kind: tDirectiveArgument, Data: "Second Argument"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: "\n\t</body>\n</html>\n"},
 		{Kind: tEOF, Data: ""},
 	}
@@ -421,6 +433,7 @@ func TestNextToken_StrongMode(t *testing.T) {
 		{Kind: tDirectiveArgument, Data: "template.shpp.in"},
 		{Kind: tDirectiveArgument, Data: "with"},
 		{Kind: tDirectiveArgument, Data: "Second Argument"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tRaw, Data: "\n\t</body>\n</html>\n"},
 		{Kind: tEOF, Data: ""},
 	}
@@ -459,6 +472,7 @@ func TestNextToken_EsotericEOFs(t *testing.T) {
 		{Kind: tPreambleEnd, Data: ""},
 		{Kind: tRaw, Data: "<html></html>"},
 		{Kind: tDirectiveName, Data: "nop"},
+		{Kind: tDirectiveEnd, Data: ""},
 		{Kind: tEOF, Data: ""},
 	}
 

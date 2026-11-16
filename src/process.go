@@ -92,25 +92,16 @@ func processPreamble(lexer *Lexer, state *State) error {
 	for {
 		switch token.Kind {
 		case tDirectiveName:
-			if len(tokenList) != 0 {
-				err = evaluateDirective(tokenList, state, true)
-				if err != nil {
-					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
-				}
-				tokenList = []Token{}
-			}
 			fallthrough
 		case tDirectiveArgument:
 			tokenList = append(tokenList, token)
-		case tPreambleEnd:
-			if len(tokenList) != 0 {
-				err = evaluateDirective(tokenList, state, true)
-				if err != nil {
-					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
-				}
-				tokenList = []Token{}
+		case tDirectiveEnd:
+			err = evaluateDirective(tokenList, state, true)
+			if err != nil {
+				return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber-1, err)
 			}
-
+			tokenList = []Token{}
+		case tPreambleEnd:
 			return nil
 		}
 
@@ -136,34 +127,18 @@ func processBody(lexer *Lexer, state *State) error {
 	for {
 		switch token.Kind {
 		case tDirectiveName:
-			if len(tokenList) != 0 {
-				err = evaluateDirective(tokenList, state, false)
-				if err != nil {
-					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
-				}
-				tokenList = []Token{}
-			}
 			fallthrough
 		case tDirectiveArgument:
 			tokenList = append(tokenList, token)
-		case tRaw:
-			if len(tokenList) != 0 {
-				err = evaluateDirective(tokenList, state, false)
-				if err != nil {
-					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
-				}
-				tokenList = []Token{}
+		case tDirectiveEnd:
+			err = evaluateDirective(tokenList, state, false)
+			if err != nil {
+				return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber-1, err)
 			}
+			tokenList = []Token{}
+		case tRaw:
 			state.Emitter.writeIM(token.Data)
 		case tEOF:
-			if len(tokenList) != 0 {
-				err = evaluateDirective(tokenList, state, false)
-				if err != nil {
-					return fmt.Errorf("%s:%d \n\t-> %w", state.FileName, lexer.LineNumber, err)
-				}
-				tokenList = []Token{}
-			}
-
 			return nil
 		}
 

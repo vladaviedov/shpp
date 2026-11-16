@@ -24,6 +24,7 @@ const (
 	tError TokenKind = iota
 	tEOF
 	tPreambleEnd
+	tDirectiveEnd
 	// Blobs
 	tDirectiveName
 	tDirectiveArgument
@@ -45,10 +46,11 @@ type Token struct {
 
 // Premade (const) special tokens
 var (
-	tokenError       = Token{Kind: tError, Data: ""}
-	tokenEOF         = Token{Kind: tEOF, Data: ""}
-	tokenPreambleEnd = Token{Kind: tPreambleEnd, Data: ""}
-	tokenEscape      = Token{Kind: tRaw, Data: "@"}
+	tokenError        = Token{Kind: tError, Data: ""}
+	tokenEOF          = Token{Kind: tEOF, Data: ""}
+	tokenPreambleEnd  = Token{Kind: tPreambleEnd, Data: ""}
+	tokenDirectiveEnd = Token{Kind: tDirectiveEnd, Data: ""}
+	tokenEscape       = Token{Kind: tRaw, Data: "@"}
 )
 
 var advanceEOF = fmt.Errorf("failed to read stream: %s", io.EOF)
@@ -69,18 +71,18 @@ type Lexer struct {
 
 func newLexer(source io.Reader) (*Lexer, error) {
 	stream := bufio.NewReader(source)
-	head, _, err := stream.ReadRune()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize lexer: %w", err)
-	}
 
 	s := &Lexer{
 		Stream:        stream,
-		Head:          head,
 		LineNumber:    1,
 		FlagPreamble:  true,
 		FlagDirective: false,
 		FlagEOF:       false,
+	}
+
+	err := s.advanceHead()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize lexer: %w", err)
 	}
 
 	return s, nil
@@ -114,12 +116,21 @@ func (s *Lexer) nextToken() (Token, error) {
 			case '@':
 				// Exit directive mode
 				s.FlagDirective = false
+
+				// Discard the closing at-sign without error check
+				err := s.advanceHead()
+				if err != nil {
+					if !s.FlagPreamble && !s.FlagDirective && err.Error() == advanceEOF.Error() {
+						s.FlagEOF = true
+					} else {
+						return tokenError, nil
+					}
+				}
+				return tokenDirectiveEnd, nil
 			case '\n':
 				// Exit directive mode
 				s.FlagDirective = false
-				if !s.FlagPreamble {
-					rawBuf.WriteRune(s.Head)
-				}
+				return tokenDirectiveEnd, nil
 			case '\\':
 				// Check line continuation
 				if next == '\n' {
